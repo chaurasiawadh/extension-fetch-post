@@ -1,0 +1,39 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0077B5"/>
+      <stop offset="100%" style="stop-color:#00A0DC"/>
+    </linearGradient>
+    <linearGradient id="arrowGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff"/>
+      <stop offset="100%" style="stop-color:#e0f4ff"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="128" height="128" rx="24" fill="url(#bgGradient)"/>
+  
+  <!-- Network dots -->
+  <circle cx="28" cy="32" r="6" fill="rgba(255,255,255,0.3)"/>
+  <circle cx="100" cy="32" r="6" fill="rgba(255,255,255,0.3)"/>
+  <circle cx="28" cy="96" r="6" fill="rgba(255,255,255,0.3)"/>
+  <circle cx="100" cy="96" r="6" fill="rgba(255,255,255,0.3)"/>
+  
+  <!-- Connection lines -->
+  <line x1="34" y1="32" x2="50" y2="50" stroke="rgba(255,255,255,0.2)" stroke-width="2"/>
+  <line x1="94" y1="32" x2="78" y2="50" stroke="rgba(255,255,255,0.2)" stroke-width="2"/>
+  <line x1="34" y1="96" x2="50" y2="78" stroke="rgba(255,255,255,0.2)" stroke-width="2"/>
+  <line x1="94" y1="96" x2="78" y2="78" stroke="rgba(255,255,255,0.2)" stroke-width="2"/>
+  
+  <!-- Download arrow -->
+  <g transform="translate(64, 64)">
+    <!-- Arrow body -->
+    <rect x="-8" y="-30" width="16" height="40" rx="4" fill="url(#arrowGradient)"/>
+    
+    <!-- Arrow head -->
+    <polygon points="0,30 -20,10 -10,10 -10,-5 10,-5 10,10 20,10" fill="url(#arrowGradient)"/>
+    
+    <!-- Base line -->
+    <rect x="-24" y="35" width="48" height="6" rx="3" fill="url(#arrowGradient)"/>
+  </g>
+</svg>

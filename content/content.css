@@ -1,0 +1,74 @@
+/* LinkedIn Lead Extractor - Content Styles */
+
+#lle-indicator {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 999999;
+    animation: lle-slide-up 0.3s ease;
+}
+
+#lle-indicator .lle-content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 20px;
+    background: linear-gradient(135deg, #0077b5 0%, #00a0dc 100%);
+    color: white;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 119, 181, 0.4);
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+#lle-indicator svg {
+    flex-shrink: 0;
+}
+
+#lle-indicator.lle-fade-out {
+    animation: lle-fade-out 0.3s ease forwards;
+}
+
+@keyframes lle-slide-up {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes lle-fade-out {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    to {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+}
+
+/* Highlight extracted elements temporarily */
+.lle-highlighted {
+    outline: 2px solid #0077b5 !important;
+    outline-offset: 2px;
+    animation: lle-pulse 0.5s ease;
+}
+
+@keyframes lle-pulse {
+
+    0%,
+    100% {
+        outline-color: #0077b5;
+    }
+
+    50% {
+        outline-color: #00a0dc;
+    }
+}
