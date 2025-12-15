@@ -415,3 +415,61 @@ body {
     flex-direction: column;
     align-items: center;
 }
+
+/* Scroll Input Row */
+.scroll-input-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.scroll-input-row input[type="number"] {
+    width: 70px;
+    padding: 10px 12px;
+    text-align: center;
+    font-weight: 600;
+}
+
+.scroll-input-row input[type="number"]::-webkit-inner-spin-button,
+.scroll-input-row input[type="number"]::-webkit-outer-spin-button {
+    opacity: 1;
+    height: 24px;
+}
+
+.scroll-label {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+/* Scroll Progress */
+.scroll-progress {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    background: rgba(0, 119, 181, 0.1);
+    border: 1px solid rgba(0, 119, 181, 0.2);
+    border-radius: var(--radius-md);
+    margin-bottom: 10px;
+}
+
+.scroll-progress-bar {
+    flex: 1;
+    height: 6px;
+    background: var(--bg-tertiary);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.scroll-progress-fill {
+    height: 100%;
+    background: var(--accent-gradient);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+.scroll-progress-text {
+    font-size: 12px;
+    color: var(--accent-secondary);
+    white-space: nowrap;
+}

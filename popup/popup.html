@@ -66,6 +66,22 @@
                 <div id="keywordTags" class="keyword-tags"></div>
             </div>
 
+            <!-- Auto-Scroll Settings -->
+            <div class="input-group">
+                <label for="scrollCount">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 5v14M5 12l7 7 7-7" />
+                    </svg>
+                    Auto-Scroll Count
+                    <span class="optional-badge">Optional</span>
+                </label>
+                <div class="scroll-input-row">
+                    <input type="number" id="scrollCount" min="0" value="5" placeholder="5">
+                    <span class="scroll-label">scrolls before extract</span>
+                </div>
+                <span class="input-hint">Set to 0 for no auto-scroll. Higher = more posts loaded</span>
+            </div>
+
             <!-- Extraction Stats -->
             <div id="statsPanel" class="stats-panel hidden">
                 <div class="stat-item">

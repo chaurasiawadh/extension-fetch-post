@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const webhookUrlInput = document.getElementById('webhookUrl');
     const keywordsInput = document.getElementById('keywords');
     const keywordTagsContainer = document.getElementById('keywordTags');
+    const scrollCountInput = document.getElementById('scrollCount');
     const extractBtn = document.getElementById('extractBtn');
     const saveSettingsBtn = document.getElementById('saveSettingsBtn');
     const clearHistoryBtn = document.getElementById('clearHistoryBtn');
@@ -19,7 +20,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Load saved settings and extracted history
     await loadSettings();
-    let extractedProfileUrls = await loadExtractedHistory();
+    let extractedEmails = await loadExtractedHistory();
     updateHistoryCount();
 
     // Event Listeners
@@ -31,9 +32,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Update history count display
     function updateHistoryCount() {
-        const count = extractedProfileUrls.size;
+        const count = extractedEmails.size;
         if (count > 0) {
-            historyCountEl.textContent = `📊 ${count} profiles in history (duplicates blocked)`;
+            historyCountEl.textContent = `📊 ${count} emails in history (duplicates blocked)`;
         } else {
             historyCountEl.textContent = '';
         }
@@ -42,10 +43,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Clear extraction history
     async function clearHistory() {
         try {
-            await chrome.storage.local.remove(['extractedProfileUrls']);
-            extractedProfileUrls = new Set();
+            await chrome.storage.local.remove(['extractedEmails']);
+            extractedEmails = new Set();
             updateHistoryCount();
-            showStatus('success', '✓ History cleared! All profiles can be extracted again.');
+            showStatus('success', '✓ History cleared! All emails can be extracted again.');
         } catch (error) {
             showStatus('error', '✗ Failed to clear history');
             console.error('Error clearing history:', error);
@@ -55,7 +56,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Load settings from Chrome storage
     async function loadSettings() {
         try {
-            const result = await chrome.storage.local.get(['webhookUrl', 'keywords']);
+            const result = await chrome.storage.local.get(['webhookUrl', 'keywords', 'scrollCount']);
             if (result.webhookUrl) {
                 webhookUrlInput.value = result.webhookUrl;
             }
@@ -63,31 +64,34 @@ document.addEventListener('DOMContentLoaded', async () => {
                 keywordsInput.value = result.keywords;
                 updateKeywordTags();
             }
+            if (result.scrollCount !== undefined) {
+                scrollCountInput.value = result.scrollCount;
+            }
         } catch (error) {
             console.error('Error loading settings:', error);
         }
     }
 
-    // Load extracted profile URLs history to avoid duplicates
+    // Load extracted emails history to avoid duplicates
     async function loadExtractedHistory() {
         try {
-            const result = await chrome.storage.local.get(['extractedProfileUrls']);
-            return new Set(result.extractedProfileUrls || []);
+            const result = await chrome.storage.local.get(['extractedEmails']);
+            return new Set(result.extractedEmails || []);
         } catch (error) {
             console.error('Error loading history:', error);
             return new Set();
         }
     }
 
-    // Save extracted profile URLs to history
-    async function saveExtractedHistory(newUrls) {
+    // Save extracted emails to history
+    async function saveExtractedHistory(newEmails) {
         try {
             const existing = await loadExtractedHistory();
-            newUrls.forEach(url => existing.add(url));
+            newEmails.forEach(email => existing.add(email.toLowerCase()));
             // Keep only last 5000 entries to prevent storage bloat
-            const urlArray = Array.from(existing).slice(-5000);
-            await chrome.storage.local.set({ extractedProfileUrls: urlArray });
-            return new Set(urlArray);
+            const emailArray = Array.from(existing).slice(-5000);
+            await chrome.storage.local.set({ extractedEmails: emailArray });
+            return new Set(emailArray);
         } catch (error) {
             console.error('Error saving history:', error);
         }
@@ -98,7 +102,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             await chrome.storage.local.set({
                 webhookUrl: webhookUrlInput.value.trim(),
-                keywords: keywordsInput.value.trim()
+                keywords: keywordsInput.value.trim(),
+                scrollCount: parseInt(scrollCountInput.value) || 5
             });
             showStatus('success', '✓ Settings saved successfully!');
         } catch (error) {
@@ -162,6 +167,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             .map(k => k.trim().toLowerCase())
             .filter(k => k.length > 0);
 
+        // Get scroll count (no upper limit)
+        const scrollCount = Math.max(0, parseInt(scrollCountInput.value) || 0);
+
         // Show loading state
         extractBtn.disabled = true;
         extractBtn.innerHTML = `
@@ -172,7 +180,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       </svg>
       <span>Extracting...</span>
     `;
-        showStatus('loading', '⟳ Scanning LinkedIn for leads...');
+        showStatus('loading', scrollCount > 0 ? `⟳ Auto-scrolling (0/${scrollCount})...` : '⟳ Scanning LinkedIn for leads...');
 
         try {
             // Get the active tab
@@ -182,6 +190,32 @@ document.addEventListener('DOMContentLoaded', async () => {
                 showStatus('error', '✗ Please open LinkedIn first');
                 resetButton();
                 return;
+            }
+
+            // Auto-scroll if scroll count > 0
+            if (scrollCount > 0) {
+                showStatus('loading', `⟳ Auto-scrolling LinkedIn (0/${scrollCount})...`);
+
+                for (let i = 0; i < scrollCount; i++) {
+                    // Update progress
+                    showStatus('loading', `⟳ Scrolling... (${i + 1}/${scrollCount})`);
+
+                    // Execute scroll on the page
+                    await chrome.scripting.executeScript({
+                        target: { tabId: tab.id },
+                        func: () => {
+                            window.scrollBy({ top: window.innerHeight * 2, behavior: 'smooth' });
+                        }
+                    });
+
+                    // Wait for content to load (1.5 seconds between scrolls)
+                    await new Promise(resolve => setTimeout(resolve, 1500));
+                }
+
+                // Stay at current position (don't scroll back to top)
+                // Wait a bit for final content to load
+                await new Promise(resolve => setTimeout(resolve, 500));
+                showStatus('loading', '⟳ Extracting leads...');
             }
 
             // Execute content script to extract data
@@ -215,20 +249,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 console.log(`Keyword filter removed: ${keywordFiltered} leads`);
             }
 
-            // Filter out already extracted profiles (duplicate detection)
-            let duplicatesRemoved = 0;
-            if (extractedData && extractedData.leads.length > 0) {
-                const originalCount = extractedData.leads.length;
-                extractedData.leads = extractedData.leads.filter(
-                    lead => !lead.profileUrl || !extractedProfileUrls.has(lead.profileUrl)
-                );
-                duplicatesRemoved = originalCount - extractedData.leads.length;
-                if (duplicatesRemoved > 0) {
-                    console.log(`Filtered out ${duplicatesRemoved} duplicate profiles`);
-                }
-            }
-
-            // Filter to only keep leads WITH email addresses
+            // STEP 1: Filter to only keep leads WITH email addresses (must happen first)
             let leadsWithoutEmail = 0;
             if (extractedData && extractedData.leads.length > 0) {
                 const beforeFilter = extractedData.leads.length;
@@ -239,13 +260,53 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
 
+            // STEP 2: Deduplicate within this extraction (same email appearing in multiple posts)
+            let internalDuplicates = 0;
+            if (extractedData && extractedData.leads.length > 0) {
+                const seenEmailsThisRun = new Set();
+                const beforeCount = extractedData.leads.length;
+                extractedData.leads = extractedData.leads.filter(lead => {
+                    const emailLower = lead.email.toLowerCase();
+                    if (seenEmailsThisRun.has(emailLower)) {
+                        return false; // Skip duplicate within same extraction
+                    }
+                    seenEmailsThisRun.add(emailLower);
+                    return true;
+                });
+                internalDuplicates = beforeCount - extractedData.leads.length;
+                if (internalDuplicates > 0) {
+                    console.log(`Removed ${internalDuplicates} duplicate emails within this extraction`);
+                }
+            }
+
+            // STEP 3: Filter out emails already sent in previous extractions
+            let duplicatesRemoved = 0;
+            if (extractedData && extractedData.leads.length > 0) {
+                const originalCount = extractedData.leads.length;
+                console.log('Checking against history. History size:', extractedEmails.size);
+                console.log('History emails:', Array.from(extractedEmails).slice(0, 10)); // Show first 10
+
+                extractedData.leads = extractedData.leads.filter(lead => {
+                    const emailLower = lead.email.toLowerCase();
+                    const isDuplicate = extractedEmails.has(emailLower);
+                    if (isDuplicate) {
+                        console.log(`DUPLICATE: ${emailLower} already in history`);
+                    }
+                    return !isDuplicate;
+                });
+                duplicatesRemoved = originalCount - extractedData.leads.length;
+                if (duplicatesRemoved > 0) {
+                    console.log(`Filtered out ${duplicatesRemoved} previously sent emails`);
+                }
+            }
+
             console.log('Final leads count:', extractedData?.leads?.length || 0);
 
             if (!extractedData || extractedData.leads.length === 0) {
                 if (leadsWithoutEmail > 0) {
                     showStatus('error', `✗ Found ${leadsWithoutEmail} leads but none had emails visible.`);
                 } else if (duplicatesRemoved > 0) {
-                    showStatus('error', `✗ All ${duplicatesRemoved} leads already extracted. Scroll for new posts.`);
+                    showStatus('error', `✗ All ${duplicatesRemoved} emails already sent. Scroll for new posts.`);
                 } else {
                     showStatus('error', '✗ No leads found. Try scrolling more or check keywords.');
                 }
@@ -280,9 +341,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
 
             if (response.success) {
-                // Save extracted URLs to history to prevent future duplicates
-                const newUrls = extractedData.leads.map(l => l.profileUrl).filter(u => u);
-                extractedProfileUrls = await saveExtractedHistory(newUrls);
+                // Save extracted emails to history to prevent future duplicates
+                const newEmails = extractedData.leads.map(l => l.email).filter(e => e);
+                extractedEmails = await saveExtractedHistory(newEmails);
                 updateHistoryCount();
 
                 updateStats(
