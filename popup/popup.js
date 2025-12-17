@@ -78,7 +78,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ===================================
     async function checkWatchStatus() {
         try {
-            const { active } = await chrome.runtime.sendMessage({ type: 'GET_WATCH_STATUS' });
+            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+            if (!tab) return;
+
+            const { active } = await chrome.runtime.sendMessage({
+                type: 'GET_WATCH_STATUS',
+                tabId: tab.id
+            });
             updateWatchUI(active);
         } catch (e) {
             console.error('Failed to get watch status', e);
@@ -86,12 +92,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     async function toggleWatchMode() {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!tab || !tab.url.includes('linkedin.com')) {
+            showStatus('error', 'Please open LinkedIn first');
+            return;
+        }
+
         if (isWatchModeActive) {
-            // STOP
+            // STOP for this specific tab
             try {
-                await chrome.runtime.sendMessage({ type: 'STOP_WATCH_MODE' });
+                await chrome.runtime.sendMessage({
+                    type: 'STOP_WATCH_MODE',
+                    tabId: tab.id
+                });
                 updateWatchUI(false);
-                showStatus('success', 'Watch Mode Stopped');
+                showStatus('success', 'Watch Mode Stopped (for this tab)');
             } catch (e) {
                 showStatus('error', 'Failed to stop Watch Mode');
             }
@@ -105,17 +120,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             try {
-                // Get active tab
-                const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-                if (!tab || !tab.url.includes('linkedin.com')) {
-                    showStatus('error', 'Please open LinkedIn first');
-                    return;
-                }
-
                 const refreshIntervalInput = document.getElementById('refreshInterval');
                 const maxBatchesInput = document.getElementById('maxBatches');
-
-                // ... inside toggleWatchMode ...
 
                 const config = {
                     type: 'START_WATCH_MODE',
