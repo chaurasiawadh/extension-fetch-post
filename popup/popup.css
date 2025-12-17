@@ -275,8 +275,10 @@ body {
 .actions {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
     margin-top: auto;
+    margin-left: 16px;
+    margin-right: 16px;
 }
 
 .btn-primary,
@@ -681,4 +683,163 @@ body {
     background: var(--bg-secondary);
     color: var(--text-primary);
     padding: 8px;
+}
+
+/* Watch Mode Section */
+.watch-mode-container {
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.watch-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.watch-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.watch-title-row h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.watch-desc p {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin: 0 0 12px 0;
+    line-height: 1.4;
+}
+
+/* Settings Grid */
+.watch-settings {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: rgba(0, 0, 0, 0.15);
+    padding: 10px;
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.setting-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.setting-row label {
+    font-size: 11px;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.setting-input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--bg-tertiary);
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+}
+
+.setting-input-wrapper input {
+    width: 32px;
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: right;
+    padding: 2px 0;
+}
+
+.setting-input-wrapper input:focus {
+    outline: none;
+}
+
+.setting-input-wrapper span {
+    font-size: 10px;
+    color: var(--text-muted);
+    opacity: 0.8;
+}
+
+/* Watch Mode Buttons */
+.btn-watch-start,
+.btn-watch-stop {
+    width: 100%;
+    padding: 12px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.btn-watch-start {
+    background: rgba(0, 119, 181, 0.15);
+    color: var(--accent-secondary);
+    border: 1px solid rgba(0, 119, 181, 0.3);
+    box-shadow: 0 2px 8px rgba(0, 119, 181, 0.15);
+    color: white;
+    /* Ensure text is white */
+}
+
+.btn-watch-start:hover {
+    background: rgba(0, 119, 181, 0.25);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 119, 181, 0.25);
+}
+
+.btn-watch-stop {
+    background: rgba(252, 129, 129, 0.15);
+    color: var(--error);
+    border: 1px solid rgba(252, 129, 129, 0.3);
+    box-shadow: 0 2px 8px rgba(252, 129, 129, 0.15);
+}
+
+.btn-watch-stop:hover {
+    background: rgba(252, 129, 129, 0.25);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(252, 129, 129, 0.25);
+}
+
+/* Badges */
+.badge-on {
+    background: rgba(72, 187, 120, 0.2);
+    color: var(--success);
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 12px;
+    border: 1px solid rgba(72, 187, 120, 0.3);
+    box-shadow: 0 0 8px rgba(72, 187, 120, 0.2);
+}
+
+.badge-off {
+    background: var(--bg-tertiary);
+    color: var(--text-muted);
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
 }
