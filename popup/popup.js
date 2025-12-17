@@ -920,11 +920,27 @@ function extractLinkedInData(keywords, excludeKeywords = []) {
             // Apply exclude keyword filter FIRST (takes priority)
             // If post contains any exclude keyword, skip it entirely
             if (excludeKeywords && excludeKeywords.length > 0) {
-                const textToSearch = fullText.toLowerCase();
                 const hasExcludeKeyword = excludeKeywords.some(keyword => {
-                    const keywordLower = keyword.toLowerCase().trim();
-                    return textToSearch.includes(keywordLower);
+                    // Normalize keyword
+                    const kw = keyword.trim();
+                    if (!kw) return false;
+
+                    // Escape special regex chars
+                    const escaped = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+                    // Use Lookbehind/Lookahead to ensure "Whole Word" matching
+                    // Checks that the keyword is NOT surrounded by alphanumeric characters
+                    // e.g. "Java" matches "Java", "JAVA" but NOT "Javascript"
+                    // e.g. "C++" matches "C++" (space after) but NOT "C++IsCool"
+                    try {
+                        const pattern = new RegExp(`(?<![a-zA-Z0-9])` + escaped + `(?![a-zA-Z0-9])`, 'i');
+                        return pattern.test(fullText);
+                    } catch (e) {
+                        // Fallback for very old browsers if lookbehind not supported
+                        return fullText.toLowerCase().includes(kw.toLowerCase());
+                    }
                 });
+
                 if (hasExcludeKeyword) {
                     console.log(`Excluding post - matches exclude keyword. Exclude keywords: ${excludeKeywords.join(', ')}`);
                     return; // Skip this result
