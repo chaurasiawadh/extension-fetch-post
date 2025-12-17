@@ -263,11 +263,17 @@
           const hasExcludeKeyword = excludeKeywords.some(keyword => {
             const kw = keyword.trim();
             if (!kw) return false;
+            
+            // Escape special regex chars
             const escaped = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            
             try {
-              const pattern = new RegExp(`(?<![a-zA-Z0-9])` + escaped + `(?![a-zA-Z0-9])`, 'i');
+              // Word boundary check: \b matches start/end of word
+              // This prevents "Java" from matching "Javascript"
+              const pattern = new RegExp(`\\b${escaped}\\b`, 'i');
               return pattern.test(fullText);
             } catch (e) {
+              // Fallback to simple includes if regex fails (rare)
               return fullText.toLowerCase().includes(kw.toLowerCase());
             }
           });
