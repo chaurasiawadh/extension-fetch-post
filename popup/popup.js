@@ -3,8 +3,11 @@
 document.addEventListener('DOMContentLoaded', async () => {
     // DOM Elements
     const webhookUrlInput = document.getElementById('webhookUrl');
+    const sheetNameInput = document.getElementById('sheetName');
     const keywordsInput = document.getElementById('keywords');
     const keywordTagsContainer = document.getElementById('keywordTags');
+    const excludeKeywordsInput = document.getElementById('excludeKeywords');
+    const excludeKeywordTagsContainer = document.getElementById('excludeKeywordTags');
     const scrollCountInput = document.getElementById('scrollCount');
     const extractBtn = document.getElementById('extractBtn');
     const saveSettingsBtn = document.getElementById('saveSettingsBtn');
@@ -18,17 +21,224 @@ document.addEventListener('DOMContentLoaded', async () => {
     const totalFilteredEl = document.getElementById('totalFiltered');
     const totalSentEl = document.getElementById('totalSent');
 
-    // Load saved settings and extracted history
-    await loadSettings();
+    // Profile Management DOM Elements
+    const profileSelect = document.getElementById('profileSelect');
+    const addProfileBtn = document.getElementById('addProfileBtn');
+    const deleteProfileBtn = document.getElementById('deleteProfileBtn');
+    const addProfileModal = document.getElementById('addProfileModal');
+    const newProfileNameInput = document.getElementById('newProfileName');
+    const cancelProfileBtn = document.getElementById('cancelProfileBtn');
+    const confirmProfileBtn = document.getElementById('confirmProfileBtn');
+
+    // Profile state
+    let profiles = {};
+    let currentProfileId = 'default';
+
+    // Initialize profiles
+    await loadProfiles();
+    await migrateOldSettings(); // Migrate old settings to profile system
+    await loadCurrentProfile();
     let extractedEmails = await loadExtractedHistory();
     updateHistoryCount();
+    updateDeleteButton();
+
+    // Profile Event Listeners
+    profileSelect.addEventListener('change', handleProfileChange);
+    addProfileBtn.addEventListener('click', openAddProfileModal);
+    deleteProfileBtn.addEventListener('click', deleteCurrentProfile);
+    cancelProfileBtn.addEventListener('click', closeAddProfileModal);
+    confirmProfileBtn.addEventListener('click', createNewProfile);
+    newProfileNameInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') createNewProfile();
+    });
+
+    // Close modal when clicking outside
+    addProfileModal.addEventListener('click', (e) => {
+        if (e.target === addProfileModal) closeAddProfileModal();
+    });
 
     // Event Listeners
     keywordsInput.addEventListener('input', updateKeywordTags);
     keywordsInput.addEventListener('blur', updateKeywordTags);
+    excludeKeywordsInput.addEventListener('input', updateExcludeKeywordTags);
+    excludeKeywordsInput.addEventListener('blur', updateExcludeKeywordTags);
     saveSettingsBtn.addEventListener('click', saveSettings);
     extractBtn.addEventListener('click', extractLeads);
     clearHistoryBtn.addEventListener('click', clearHistory);
+
+    // ============== PROFILE MANAGEMENT FUNCTIONS ==============
+
+    // Load all profiles from storage
+    async function loadProfiles() {
+        try {
+            const result = await chrome.storage.local.get(['profiles', 'currentProfileId']);
+            profiles = result.profiles || {
+                'default': {
+                    id: 'default',
+                    name: 'Default Profile',
+                    webhookUrl: '',
+                    sheetName: 'Linkedin Hr Outreach',
+                    keywords: '',
+                    excludeKeywords: '',
+                    scrollCount: 5
+                }
+            };
+            currentProfileId = result.currentProfileId || 'default';
+
+            // Populate profile dropdown
+            populateProfileDropdown();
+        } catch (error) {
+            console.error('Error loading profiles:', error);
+        }
+    }
+
+    // Populate the profile dropdown
+    function populateProfileDropdown() {
+        profileSelect.innerHTML = '';
+        Object.values(profiles).forEach(profile => {
+            const option = document.createElement('option');
+            option.value = profile.id;
+            option.textContent = profile.name;
+            if (profile.id === currentProfileId) {
+                option.selected = true;
+            }
+            profileSelect.appendChild(option);
+        });
+    }
+
+    // Load current profile settings into UI
+    async function loadCurrentProfile() {
+        const profile = profiles[currentProfileId];
+        if (profile) {
+            webhookUrlInput.value = profile.webhookUrl || '';
+            sheetNameInput.value = profile.sheetName || '';
+            keywordsInput.value = profile.keywords || '';
+            excludeKeywordsInput.value = profile.excludeKeywords || '';
+            scrollCountInput.value = profile.scrollCount !== undefined ? profile.scrollCount : 5;
+            updateKeywordTags();
+            updateExcludeKeywordTags();
+        }
+    }
+
+    // Handle profile change
+    async function handleProfileChange() {
+        // Save current profile first
+        await saveCurrentProfileData();
+
+        // Switch to new profile
+        currentProfileId = profileSelect.value;
+        await chrome.storage.local.set({ currentProfileId });
+
+        // Load new profile settings
+        await loadCurrentProfile();
+        extractedEmails = await loadExtractedHistory();
+        updateHistoryCount();
+        updateDeleteButton();
+
+        showStatus('success', `✓ Switched to "${profiles[currentProfileId].name}"`);
+    }
+
+    // Save current profile data (without showing message)
+    async function saveCurrentProfileData() {
+        profiles[currentProfileId] = {
+            ...profiles[currentProfileId],
+            webhookUrl: webhookUrlInput.value.trim(),
+            sheetName: sheetNameInput.value.trim(),
+            keywords: keywordsInput.value.trim(),
+            excludeKeywords: excludeKeywordsInput.value.trim(),
+            scrollCount: parseInt(scrollCountInput.value) || 5
+        };
+        await chrome.storage.local.set({ profiles });
+    }
+
+    // Open add profile modal
+    function openAddProfileModal() {
+        newProfileNameInput.value = '';
+        addProfileModal.classList.remove('hidden');
+        newProfileNameInput.focus();
+    }
+
+    // Close add profile modal
+    function closeAddProfileModal() {
+        addProfileModal.classList.add('hidden');
+        newProfileNameInput.value = '';
+    }
+
+    // Create new profile
+    async function createNewProfile() {
+        const name = newProfileNameInput.value.trim();
+        if (!name) {
+            showStatus('error', '✗ Please enter a profile name');
+            return;
+        }
+
+        // Check for duplicate names
+        const existingNames = Object.values(profiles).map(p => p.name.toLowerCase());
+        if (existingNames.includes(name.toLowerCase())) {
+            showStatus('error', '✗ A profile with this name already exists');
+            return;
+        }
+
+        // Generate unique ID
+        const id = 'profile_' + Date.now();
+
+        // Create new profile
+        profiles[id] = {
+            id,
+            name,
+            webhookUrl: webhookUrlInput.value.trim(), // Copy current webhook URL
+            sheetName: '',
+            keywords: '',
+            excludeKeywords: '',
+            scrollCount: 5
+        };
+
+        // Save and switch to new profile
+        currentProfileId = id;
+        await chrome.storage.local.set({ profiles, currentProfileId });
+
+        populateProfileDropdown();
+        await loadCurrentProfile();
+        extractedEmails = await loadExtractedHistory();
+        updateHistoryCount();
+        updateDeleteButton();
+
+        closeAddProfileModal();
+        showStatus('success', `✓ Created profile "${name}"`);
+    }
+
+    // Delete current profile
+    async function deleteCurrentProfile() {
+        if (currentProfileId === 'default') {
+            showStatus('error', '✗ Cannot delete the default profile');
+            return;
+        }
+
+        const profileName = profiles[currentProfileId].name;
+
+        // Remove profile and its history
+        delete profiles[currentProfileId];
+        await chrome.storage.local.remove([`extractedEmails_${currentProfileId}`]);
+
+        // Switch to default profile
+        currentProfileId = 'default';
+        await chrome.storage.local.set({ profiles, currentProfileId });
+
+        populateProfileDropdown();
+        await loadCurrentProfile();
+        extractedEmails = await loadExtractedHistory();
+        updateHistoryCount();
+        updateDeleteButton();
+
+        showStatus('success', `✓ Deleted profile "${profileName}"`);
+    }
+
+    // Update delete button state
+    function updateDeleteButton() {
+        deleteProfileBtn.disabled = currentProfileId === 'default';
+    }
+
+    // ============== END PROFILE MANAGEMENT ==============
 
     // Update history count display
     function updateHistoryCount() {
@@ -40,72 +250,81 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // Clear extraction history
+    // Clear extraction history for current profile
     async function clearHistory() {
         try {
-            await chrome.storage.local.remove(['extractedEmails']);
+            const storageKey = `extractedEmails_${currentProfileId}`;
+            await chrome.storage.local.remove([storageKey]);
             extractedEmails = new Set();
             updateHistoryCount();
-            showStatus('success', '✓ History cleared! All emails can be extracted again.');
+            showStatus('success', `✓ History cleared for "${profiles[currentProfileId].name}"!`);
         } catch (error) {
             showStatus('error', '✗ Failed to clear history');
             console.error('Error clearing history:', error);
         }
     }
 
-    // Load settings from Chrome storage
-    async function loadSettings() {
+    // Load settings from Chrome storage - legacy migration
+    async function migrateOldSettings() {
         try {
-            const result = await chrome.storage.local.get(['webhookUrl', 'keywords', 'scrollCount']);
-            if (result.webhookUrl) {
-                webhookUrlInput.value = result.webhookUrl;
-            }
-            if (result.keywords) {
-                keywordsInput.value = result.keywords;
-                updateKeywordTags();
-            }
-            if (result.scrollCount !== undefined) {
-                scrollCountInput.value = result.scrollCount;
+            // Check if there are old-style settings to migrate
+            const result = await chrome.storage.local.get(['webhookUrl', 'keywords', 'scrollCount', 'extractedEmails']);
+            if (result.webhookUrl && !profiles['default'].webhookUrl) {
+                // Migrate old settings to default profile
+                profiles['default'] = {
+                    ...profiles['default'],
+                    webhookUrl: result.webhookUrl,
+                    keywords: result.keywords || '',
+                    scrollCount: result.scrollCount || 5
+                };
+                await chrome.storage.local.set({ profiles });
+
+                // Migrate old extracted emails to default profile
+                if (result.extractedEmails && result.extractedEmails.length > 0) {
+                    await chrome.storage.local.set({ 'extractedEmails_default': result.extractedEmails });
+                }
+
+                // Clean up old keys
+                await chrome.storage.local.remove(['webhookUrl', 'keywords', 'scrollCount', 'extractedEmails']);
+                console.log('Migrated old settings to default profile');
             }
         } catch (error) {
-            console.error('Error loading settings:', error);
+            console.error('Error migrating settings:', error);
         }
     }
 
-    // Load extracted emails history to avoid duplicates
+    // Load extracted emails history for current profile
     async function loadExtractedHistory() {
         try {
-            const result = await chrome.storage.local.get(['extractedEmails']);
-            return new Set(result.extractedEmails || []);
+            const storageKey = `extractedEmails_${currentProfileId}`;
+            const result = await chrome.storage.local.get([storageKey]);
+            return new Set(result[storageKey] || []);
         } catch (error) {
             console.error('Error loading history:', error);
             return new Set();
         }
     }
 
-    // Save extracted emails to history
+    // Save extracted emails to history for current profile
     async function saveExtractedHistory(newEmails) {
         try {
             const existing = await loadExtractedHistory();
             newEmails.forEach(email => existing.add(email.toLowerCase()));
             // Keep only last 5000 entries to prevent storage bloat
             const emailArray = Array.from(existing).slice(-5000);
-            await chrome.storage.local.set({ extractedEmails: emailArray });
+            const storageKey = `extractedEmails_${currentProfileId}`;
+            await chrome.storage.local.set({ [storageKey]: emailArray });
             return new Set(emailArray);
         } catch (error) {
             console.error('Error saving history:', error);
         }
     }
 
-    // Save settings to Chrome storage
+    // Save settings to current profile
     async function saveSettings() {
         try {
-            await chrome.storage.local.set({
-                webhookUrl: webhookUrlInput.value.trim(),
-                keywords: keywordsInput.value.trim(),
-                scrollCount: parseInt(scrollCountInput.value) || 5
-            });
-            showStatus('success', '✓ Settings saved successfully!');
+            await saveCurrentProfileData();
+            showStatus('success', `✓ Settings saved for "${profiles[currentProfileId].name}"!`);
         } catch (error) {
             showStatus('error', '✗ Failed to save settings');
             console.error('Error saving settings:', error);
@@ -123,6 +342,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             .map(keyword => `<span class="keyword-tag">${escapeHtml(keyword)}</span>`)
             .join('');
     }
+
+    // Update exclude keyword tags display
+    function updateExcludeKeywordTags() {
+        const excludeKeywords = excludeKeywordsInput.value
+            .split(',')
+            .map(k => k.trim())
+            .filter(k => k.length > 0);
+
+        excludeKeywordTagsContainer.innerHTML = excludeKeywords
+            .map(keyword => `<span class="keyword-tag">${escapeHtml(keyword)}</span>`)
+            .join('');
+    }
+
 
     // Show status banner
     function showStatus(type, message) {
@@ -163,6 +395,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Get keywords
         const keywords = keywordsInput.value
+            .split(',')
+            .map(k => k.trim().toLowerCase())
+            .filter(k => k.length > 0);
+
+        // Get exclude keywords
+        const excludeKeywords = excludeKeywordsInput.value
             .split(',')
             .map(k => k.trim().toLowerCase())
             .filter(k => k.length > 0);
@@ -222,14 +460,31 @@ document.addEventListener('DOMContentLoaded', async () => {
             const results = await chrome.scripting.executeScript({
                 target: { tabId: tab.id },
                 func: extractLinkedInData,
-                args: [keywords]
+                args: [keywords, excludeKeywords]
             });
 
             let extractedData = results[0]?.result;
 
             console.log('=== EXTRACTION RESULTS ===');
             console.log('Keywords entered:', keywords);
+            console.log('Exclude keywords entered:', excludeKeywords);
             console.log('Total leads before filters:', extractedData?.leads?.length || 0);
+
+            // EXCLUDE KEYWORD FILTER (Applied first - takes priority over positive filters)
+            let excludeFiltered = 0;
+            if (extractedData && extractedData.leads.length > 0 && excludeKeywords.length > 0) {
+                const beforeExcludeFilter = extractedData.leads.length;
+                extractedData.leads = extractedData.leads.filter(lead => {
+                    const textToCheck = (lead.postPreview + ' ' + lead.title + ' ' + lead.name).toLowerCase();
+                    const hasExcludeKeyword = excludeKeywords.some(kw => textToCheck.includes(kw.toLowerCase()));
+                    if (hasExcludeKeyword) {
+                        console.log(`EXCLUDE FILTER: Removing "${lead.name}" - matches exclude keyword`);
+                    }
+                    return !hasExcludeKeyword; // Return false if exclude keyword found (remove lead)
+                });
+                excludeFiltered = beforeExcludeFilter - extractedData.leads.length;
+                console.log(`Exclude filter removed: ${excludeFiltered} leads`);
+            }
 
             // SECONDARY KEYWORD FILTER (Safety check - applies after extraction)
             // This ensures keywords are definitely applied
@@ -325,12 +580,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             showStatus('loading', `⟳ Sending ${extractedData.leads.length} leads to webhook...`);
 
             // Send to webhook via background script
+            const sheetName = sheetNameInput.value.trim() || 'Linkedin Hr Outreach';
             const response = await chrome.runtime.sendMessage({
                 type: 'SEND_TO_WEBHOOK',
                 webhookUrl: webhookUrl,
                 data: {
                     leads: extractedData.leads,
                     meta: {
+                        sheetName: sheetName,
                         totalScanned: extractedData.totalScanned,
                         totalExtracted: extractedData.leads.length,
                         keywords: keywords,
@@ -396,48 +653,111 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 // This function runs in the context of the LinkedIn page
-function extractLinkedInData(keywords) {
+function extractLinkedInData(keywords, excludeKeywords = []) {
     const leads = [];
     const seenProfiles = new Set();
     let totalScanned = 0;
 
-    // Improved email regex - more strict pattern
-    // Matches: word@domain.tld where tld is 2-6 characters
-    const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}(?=\s|$|[^a-zA-Z0-9]|\.(?:\s|$|[^a-zA-Z]))/gi;
+    // Email regex - matches email patterns
+    // Permissive: allows any length TLD, assumes whitespace/boundary will catch most issues
+    const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/gi;
 
-    // Function to clean extracted email
+    // Known valid long TLDs that start with common short TLD prefixes
+    // This helps us distinguish between "gmail.community" (valid) and "gmail.comhashtag" (invalid)
+    const knownLongTLDs = new Set([
+        'community', 'company', 'computer', 'common', 'cool', 'coop', 'coach',
+        'network',
+        'organization', 'organic',
+        'education'
+    ]);
+
+    // Common garbage words that appear glued to emails
+    const garbageSuffixes = ['hashtag', 'hiring', 'looking', 'text', 'call', 'whatsapp', 'contact', 'email', 'dm', 'reach', 'interested'];
+
+    // Function to clean extracted email - handles extra text after TLD
     function cleanEmail(rawEmail) {
-        if (!rawEmail) return '';
+        if (!rawEmail) return null;
 
-        // Remove common trailing garbage
         let email = rawEmail.trim();
 
-        // Remove trailing punctuation except dots that are part of domain
-        email = email.replace(/[,;:!?\s]+$/, '');
+        // 1. Remove trailing punctuation (periods, commas, etc)
+        email = email.replace(/[.,;:!?)\사랑>\]}]+$/, "");
 
-        // Remove trailing words that got attached (like "hashtag", "Subject", etc.)
-        // Match only valid email pattern and discard the rest
-        const strictEmailMatch = email.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}/);
-        if (strictEmailMatch) {
-            email = strictEmailMatch[0];
+        // 2. Remove leading punctuation
+        email = email.replace(/^[,;:!?(\[<{]+/, "");
+
+        // 3. Lowercase now to make checking easier
+        email = email.toLowerCase();
+
+        // 4. Handle "Glued" text (Aggressive TLD cleanup)
+        const lastDotIndex = email.lastIndexOf('.');
+        if (lastDotIndex > 0 && lastDotIndex < email.length - 1) {
+            const tld = email.substring(lastDotIndex + 1);
+            let cleanedTld = tld;
+            let cutFound = false;
+
+            // Strategy A: Check for specific garbage words inside the TLD
+            for (const garbage of garbageSuffixes) {
+                const idx = tld.indexOf(garbage);
+                // Only cut if found AND it's not the whole TLD (unlikely e.g. .email is valid)
+                // But if it's "comhashtag", idx will be > 0
+                if (idx !== -1) {
+                    // special case: .email IS a valid TLD. if tld === 'email', keep it. 
+                    // if tld is 'gmail.comemail', cut.
+                    if (garbage === 'email' && tld === 'email') continue;
+
+                    cleanedTld = tld.substring(0, idx);
+                    cutFound = true;
+                    break;
+                }
+            }
+
+            // Strategy B: Check for known TLD boundaries (com, net, org, etc)
+            // If we didn't already cut it based on garbage words
+            if (!cutFound) {
+                const commonPrefixes = ['com', 'org', 'net', 'edu', 'gov', 'mil', 'in', 'uk', 'us', 'ca', 'au'];
+
+                for (const prefix of commonPrefixes) {
+                    if (tld.startsWith(prefix) && tld.length > prefix.length) {
+                        // It starts with a common TLD but has more chars.
+                        // Is the whole thing a known valid long TLD? (e.g. .community)
+                        if (!knownLongTLDs.has(tld)) {
+                            // It's likely garbage. e.g. "comthanks" -> "com"
+                            cleanedTld = prefix;
+                            cutFound = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Strategy C: CamelCase boundary (fallback)
+            // e.g. "gmail.comThanks" -> "mT" transition was detected by previous regex pass?
+            // Since we lowercased everything at step 3, we can't detect CamelCase here anymore. 
+            // relying on steps A and B is safer for the user's specific "hashtag" issue.
+
+            if (cutFound) {
+                email = email.substring(0, lastDotIndex + 1) + cleanedTld;
+            }
         }
 
-        // Final cleanup - remove any trailing dots
-        email = email.replace(/\.+$/, '');
-
-        // Validate basic email structure
+        // 5. Basic validation
         if (!email.includes('@') || !email.includes('.')) {
-            return '';
+            return null;
         }
 
-        // Check TLD is valid (2-6 chars, only letters)
-        const parts = email.split('.');
-        const tld = parts[parts.length - 1];
-        if (!/^[a-zA-Z]{2,6}$/.test(tld)) {
-            return '';
+        // Ensure domain has at least one dot
+        const parts = email.split('@');
+        if (parts.length !== 2 || !parts[1] || parts[1].indexOf('.') === -1) {
+            return null;
         }
 
-        return email.toLowerCase();
+        // Final sanity check: TLD shouldn't be empty
+        if (email.endsWith('.')) {
+            return null;
+        }
+
+        return email;
     }
 
     // Selectors for different LinkedIn page types
@@ -462,17 +782,13 @@ function extractLinkedInData(keywords) {
         totalScanned++;
 
         try {
-            // Extract profile information
-            const profileLink = element.querySelector('a[href*="/in/"]');
+            // Extract profile information - Support both people (/in/) and companies (/company/)
+            const profileLink = element.querySelector('a[href*="/in/"], a[href*="/company/"]');
             const profileUrl = profileLink?.href?.split('?')[0] || '';
 
-            // Skip duplicates
-            if (profileUrl && seenProfiles.has(profileUrl)) {
-                return;
-            }
-            if (profileUrl) {
-                seenProfiles.add(profileUrl);
-            }
+            // Removed seenProfiles check here to allow multiple posts from the same author
+            // We want to capture ALL emails, even if the same person posts multiple times
+
 
             // Get name
             const nameElement = element.querySelector(
@@ -494,14 +810,47 @@ function extractLinkedInData(keywords) {
             );
             const title = titleElement?.textContent?.trim() || '';
 
-            // Get post content
-            const contentElement = element.querySelector(
-                '.feed-shared-update-v2__description, ' +
-                '.update-components-text, ' +
-                '.feed-shared-text, ' +
-                '.break-words'
-            );
-            const postContent = contentElement?.textContent?.trim() || '';
+            // Get post content - use SPECIFIC selectors to capture actual post text (not author names)
+            // Priority order: most specific first
+            let postContent = '';
+
+            // Try multiple approaches to get the actual post content
+            const postContentSelectors = [
+                // Main post body text containers
+                '.feed-shared-update-v2__description-wrapper',
+                '.update-components-text__text-view',
+                '.feed-shared-text__text-view',
+                '.feed-shared-update-v2__commentary',
+                '.update-components-update-v2__commentary',
+                // Fallback selectors for post text
+                '.feed-shared-inline-show-more-text span[dir="ltr"]',
+                '.update-components-text span[dir="ltr"]',
+                '.feed-shared-text span[dir="ltr"]',
+                // More specific content containers
+                '[data-test-id="main-feed-activity-card__commentary"]',
+                '.feed-shared-update-v2__description'
+            ];
+
+            for (const selector of postContentSelectors) {
+                const contentEl = element.querySelector(selector);
+                if (contentEl) {
+                    const text = contentEl.textContent?.trim();
+                    // Make sure we get actual content, not just a name (should have multiple words)
+                    if (text && text.length > 50) {
+                        postContent = text;
+                        break;
+                    }
+                }
+            }
+
+            // If no content found with specific selectors, try to get text from the post container
+            // but exclude the actor/author section
+            if (!postContent || postContent.length < 50) {
+                const updateContainer = element.querySelector('.update-components-text, .feed-shared-update-v2__description');
+                if (updateContainer) {
+                    postContent = updateContainer.textContent?.trim() || '';
+                }
+            }
 
             // Get post URL
             const postLink = element.querySelector(
@@ -514,11 +863,73 @@ function extractLinkedInData(keywords) {
                 postUrl = postLink.href.split('?')[0];
             }
 
-            // Extract email from content
+            // Extract email from ALL text in the element (fullText) and specifically from post content
             const fullText = element.textContent || '';
-            const emailMatches = fullText.match(emailRegex);
-            // Clean the extracted email to remove trailing garbage
-            const email = emailMatches ? cleanEmail(emailMatches[0]) : '';
+
+            // Also try to get text from "see more" expanded content
+            const seeMoreContent = element.querySelector('.feed-shared-inline-show-more-text');
+            const expandedText = seeMoreContent?.textContent || '';
+
+            // IMPORTANT: Also extract emails from mailto: links (LinkedIn often renders emails as links)
+            let mailtoEmails = '';
+            const mailtoLinks = element.querySelectorAll('a[href^="mailto:"]');
+            mailtoLinks.forEach(link => {
+                const href = link.getAttribute('href');
+                if (href) {
+                    const emailFromHref = href.replace('mailto:', '').split('?')[0];
+                    mailtoEmails += ' ' + emailFromHref;
+                }
+                // Also get the link text which might contain email
+                mailtoEmails += ' ' + (link.textContent || '');
+            });
+
+            // Also look for any link that might contain email text
+            const allLinks = element.querySelectorAll('a');
+            let linkEmails = '';
+            allLinks.forEach(link => {
+                const linkText = link.textContent || '';
+                if (linkText.includes('@')) {
+                    linkEmails += ' ' + linkText;
+                }
+            });
+
+            // Combine all text sources for email search
+            // We add spaces between sources to avoid accidental concatenation
+            const allTextToSearch = fullText + ' ' + expandedText + ' ' + postContent + ' ' + mailtoEmails + ' ' + linkEmails;
+
+            // Debug: Log text sample
+            console.log('EMAIL DEBUG: Searching in text length:', allTextToSearch.length);
+
+            // Find all email matches
+            const emailMatches = allTextToSearch.match(emailRegex);
+
+            // Try to clean each match until we find a valid one
+            let email = '';
+            if (emailMatches && emailMatches.length > 0) {
+                console.log('EMAIL DEBUG: Found raw matches:', emailMatches);
+                for (const rawEmail of emailMatches) {
+                    const cleaned = cleanEmail(rawEmail);
+                    if (cleaned) {
+                        console.log(`EMAIL DEBUG: Cleaning "${rawEmail}" -> "${cleaned}"`);
+                        email = cleaned;
+                        break; // Found a valid email, stop
+                    }
+                }
+            }
+
+            // Apply exclude keyword filter FIRST (takes priority)
+            // If post contains any exclude keyword, skip it entirely
+            if (excludeKeywords && excludeKeywords.length > 0) {
+                const textToSearch = fullText.toLowerCase();
+                const hasExcludeKeyword = excludeKeywords.some(keyword => {
+                    const keywordLower = keyword.toLowerCase().trim();
+                    return textToSearch.includes(keywordLower);
+                });
+                if (hasExcludeKeyword) {
+                    console.log(`Excluding post - matches exclude keyword. Exclude keywords: ${excludeKeywords.join(', ')}`);
+                    return; // Skip this result
+                }
+            }
 
             // Apply keyword filter if keywords are provided
             // Search the ENTIRE post text for keywords (more accurate)
@@ -526,7 +937,6 @@ function extractLinkedInData(keywords) {
                 const textToSearch = fullText.toLowerCase();
                 const hasKeyword = keywords.some(keyword => {
                     // Check if the keyword exists as a word (not just partial match)
-                    // This prevents "hiring" from matching "hairing" etc.
                     const keywordLower = keyword.toLowerCase().trim();
                     return textToSearch.includes(keywordLower);
                 });
@@ -538,13 +948,37 @@ function extractLinkedInData(keywords) {
 
             // Only add if we have meaningful data
             if (name || title || email) {
+                // Create better post preview - use postContent, but fallback to fullText if needed
+                let preview = postContent;
+
+                // If postContent is too short, use the full element text but try to exclude actor info
+                if (!preview || preview.length < 50) {
+                    // Get full text and try to remove the author section
+                    let tempText = fullText;
+                    // Remove author name from beginning if present
+                    if (name && tempText.startsWith(name)) {
+                        tempText = tempText.substring(name.length).trim();
+                    }
+                    // Remove title from beginning if present
+                    if (title && tempText.startsWith(title)) {
+                        tempText = tempText.substring(title.length).trim();
+                    }
+                    preview = tempText;
+                }
+
+                // Clean up the preview text
+                preview = preview
+                    .replace(/\s+/g, ' ')  // Replace multiple spaces/newlines with single space
+                    .replace(/^[•·\-\s]+/, '')  // Remove leading bullets/dashes
+                    .trim();
+
                 leads.push({
                     name,
                     title,
                     profileUrl,
                     postUrl,
                     email,
-                    postPreview: postContent.substring(0, 200),
+                    postPreview: preview.substring(0, 500),
                     extractedAt: new Date().toISOString(),
                     matchedKeywords: keywords ? keywords.filter(kw => fullText.toLowerCase().includes(kw.toLowerCase())) : []
                 });
