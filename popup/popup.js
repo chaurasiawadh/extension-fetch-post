@@ -6,6 +6,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const sheetNameInput = document.getElementById('sheetName');
     const keywordsInput = document.getElementById('keywords');
     const keywordTagsContainer = document.getElementById('keywordTags');
+    const targetTitlesInput = document.getElementById('targetTitles');
+    const targetTitleTagsContainer = document.getElementById('targetTitleTags');
     const excludeKeywordsInput = document.getElementById('excludeKeywords');
     const excludeKeywordTagsContainer = document.getElementById('excludeKeywordTags');
     const scrollCountInput = document.getElementById('scrollCount');
@@ -64,6 +66,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     keywordsInput.addEventListener('input', updateKeywordTags);
     keywordsInput.addEventListener('blur', updateKeywordTags);
+    if (targetTitlesInput) {
+        targetTitlesInput.addEventListener('input', updateTargetTitleTags);
+        targetTitlesInput.addEventListener('blur', updateTargetTitleTags);
+    }
     excludeKeywordsInput.addEventListener('input', updateExcludeKeywordTags);
     excludeKeywordsInput.addEventListener('blur', updateExcludeKeywordTags);
     saveSettingsBtn.addEventListener('click', saveSettings);
@@ -131,6 +137,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     webhookUrl: webhookUrl,
                     sheetName: sheetNameInput.value.trim(),
                     keywords: getKeywordsArray(keywordsInput.value),
+                    targetTitles: getKeywordsArray(targetTitlesInput.value),
                     excludeKeywords: getKeywordsArray(excludeKeywordsInput.value),
                     scrollCount: Math.max(0, parseInt(scrollCountInput.value) || 0),
                     refreshInterval: Math.max(1, parseInt(refreshIntervalInput.value) || 60),
@@ -176,6 +183,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         const keywords = getKeywordsArray(keywordsInput.value);
+        const targetTitles = getKeywordsArray(targetTitlesInput.value);
         const excludeKeywords = getKeywordsArray(excludeKeywordsInput.value);
         const scrollCount = Math.max(0, parseInt(scrollCountInput.value) || 0);
 
@@ -196,6 +204,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const response = await chrome.tabs.sendMessage(tab.id, {
                 type: 'EXTRACT',
                 keywords,
+                targetTitles,
                 excludeKeywords,
                 scrollCount
             });
@@ -255,7 +264,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     sheetName,
                     totalScanned,
                     totalExtracted: leads.length,
-                    keywords,
+                    keywords, // Post Content Keywords
+                    targetTitles: getKeywordsArray(targetTitlesInput.value),
                     searchUrl,
                     timestamp: new Date().toISOString()
                 }
@@ -289,6 +299,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     webhookUrl: '',
                     sheetName: 'Linkedin Hr Outreach',
                     keywords: '',
+                    targetTitles: '',
                     excludeKeywords: '',
                     scrollCount: 5
                 }
@@ -317,9 +328,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             webhookUrlInput.value = profile.webhookUrl || '';
             sheetNameInput.value = profile.sheetName || '';
             keywordsInput.value = profile.keywords || '';
+            targetTitlesInput.value = profile.targetTitles || '';
             excludeKeywordsInput.value = profile.excludeKeywords || '';
             scrollCountInput.value = profile.scrollCount !== undefined ? profile.scrollCount : 5;
             updateKeywordTags();
+            updateTargetTitleTags();
             updateExcludeKeywordTags();
         }
     }
@@ -341,6 +354,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             webhookUrl: webhookUrlInput.value.trim(),
             sheetName: sheetNameInput.value.trim(),
             keywords: keywordsInput.value.trim(),
+            targetTitles: targetTitlesInput.value.trim(),
             excludeKeywords: excludeKeywordsInput.value.trim(),
             scrollCount: parseInt(scrollCountInput.value) || 5
         };
@@ -365,7 +379,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         profiles[id] = {
             id, name,
             webhookUrl: webhookUrlInput.value.trim(),
-            sheetName: '', keywords: '', excludeKeywords: '', scrollCount: 5
+            sheetName: '', keywords: '', targetTitles: '', excludeKeywords: '', scrollCount: 5
         };
         currentProfileId = id;
         await chrome.storage.local.set({ profiles, currentProfileId });
@@ -422,6 +436,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         await chrome.storage.local.remove([`extractedEmails_${currentProfileId}`]);
         extractedEmails = new Set();
         updateHistoryCount();
+        updateStats(0, 0, 0); // Reset stats visual
         showStatus('success', 'History cleared');
     }
 
@@ -435,13 +450,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         keywordTagsContainer.innerHTML = kws.map(k => `<span class="keyword-tag">${escapeHtml(k)}</span>`).join('');
     }
 
+    function updateTargetTitleTags() {
+        const kws = getKeywordsArray(targetTitlesInput.value);
+        targetTitleTagsContainer.innerHTML = kws.map(k => `<span class="keyword-tag">${escapeHtml(k)}</span>`).join('');
+    }
+
     function updateExcludeKeywordTags() {
         const kws = getKeywordsArray(excludeKeywordsInput.value);
         excludeKeywordTagsContainer.innerHTML = kws.map(k => `<span class="keyword-tag">${escapeHtml(k)}</span>`).join('');
     }
 
     function getKeywordsArray(val) {
-        return val.split(',').map(k => k.trim()).filter(k => k.length > 0);
+        return val ? val.split(',').map(k => k.trim()).filter(k => k.length > 0) : [];
     }
 
     function showStatus(type, msg) {

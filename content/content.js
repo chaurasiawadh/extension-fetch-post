@@ -40,7 +40,7 @@
   // ============================================================================
 
   async function handleExtractionRequest(message) {
-    const { keywords, excludeKeywords, scrollCount } = message;
+    const { keywords, targetTitles, excludeKeywords, scrollCount } = message;
 
     // Auto-scroll if requested
     if (scrollCount > 0) {
@@ -48,11 +48,11 @@
     }
 
     // Run extraction
-    return extractLinkedInData(keywords, excludeKeywords);
+    return extractLinkedInData(keywords, targetTitles, excludeKeywords);
   }
 
   async function handleWatchModeRun(message) {
-    const { keywords, excludeKeywords, scrollCount } = message;
+    const { keywords, targetTitles, excludeKeywords, scrollCount } = message;
 
     console.log('Watch Mode: Starting run...');
 
@@ -66,7 +66,7 @@
     await autoScroll(scrolls);
 
     // Extract
-    const result = extractLinkedInData(keywords, excludeKeywords);
+    const result = extractLinkedInData(keywords, targetTitles, excludeKeywords);
 
     // Send data back to background to handle webhook
     // We include a flag 'isWatchMode: true'
@@ -98,7 +98,7 @@
   // ============================================================================
   // EXTRACTION LOGIC (Ported from popup.js)
   // ============================================================================
-  function extractLinkedInData(keywords, excludeKeywords = []) {
+  function extractLinkedInData(keywords, targetTitles = [], excludeKeywords = []) {
     const leads = [];
     let totalScanned = 0;
 
@@ -193,6 +193,14 @@
         );
         const title = titleElement?.textContent?.trim() || '';
 
+        // TARGET TITLE FILTER (New)
+        if (targetTitles && targetTitles.length > 0) {
+          if (!title) return; // If no title found, skip
+          const titleLower = title.toLowerCase();
+          const hasMatchingTitle = targetTitles.some(t => titleLower.includes(t.toLowerCase().trim()));
+          if (!hasMatchingTitle) return; // Skip if title doesn't match
+        }
+
         // Content Extraction
         let postContent = '';
         const postContentSelectors = [
@@ -263,10 +271,10 @@
           const hasExcludeKeyword = excludeKeywords.some(keyword => {
             const kw = keyword.trim();
             if (!kw) return false;
-            
+
             // Escape special regex chars
             const escaped = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            
+
             try {
               // Word boundary check: \b matches start/end of word
               // This prevents "Java" from matching "Javascript"
