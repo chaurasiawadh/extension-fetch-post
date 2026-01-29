@@ -156,10 +156,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             processExtractedData(result, webhookUrl, keywords, tab.url);
 
         } catch (error) {
-            console.error('Extraction error:', error);
-            const isConnectionError = error.message.includes('Could not establish connection') || error.message.includes('Receiving end does not exist');
-            const msg = isConnectionError ? 'Please REFRESH the LinkedIn page and try again.' : `Error: ${error.message}`;
-            showStatus('error', msg);
+            // Check for connection errors first to avoid scary console.errors in Extension Manager
+            const isConnectionError = error.message.includes('Could not establish connection') ||
+                error.message.includes('Receiving end does not exist');
+
+            if (isConnectionError) {
+                console.warn('Connection lost. User needs to refresh page.');
+                showStatus('error', 'Please REFRESH the LinkedIn page and try again.');
+            } else {
+                console.error('Extraction error:', error);
+                showStatus('error', `Error: ${error.message}`);
+            }
             resetButton();
         }
     }

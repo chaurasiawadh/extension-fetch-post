@@ -647,11 +647,12 @@
         showOverlay('No new leads this batch. Continuing...', 'info');
       }
     } catch (e) {
-      console.error('Watch Mode: Connection error', e);
-      const isInvalidated = e.message.includes('Extension context invalidated');
+      const isInvalidated = e.message && e.message.includes('Extension context invalidated');
       if (isInvalidated) {
+        console.warn('Watch Mode: Context invalidated (reload detected).');
         showOverlay('Extension updated. Please REFRESH this page!', 'error');
       } else {
+        console.error('Watch Mode: Connection error', e);
         showOverlay('Connection error. Retrying soon...', 'error');
       }
     }
