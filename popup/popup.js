@@ -25,9 +25,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const totalFilteredEl = document.getElementById('totalFiltered');
     const totalSentEl = document.getElementById('totalSent');
 
-    // Watch Mode Elements
-    const toggleWatchBtn = document.getElementById('toggleWatchBtn');
-    const watchStatusBadge = document.getElementById('watchStatusBadge');
+    // Watch Mode Elements Removed
 
     // Profile Management DOM Elements
     const profileSelect = document.getElementById('profileSelect');
@@ -42,7 +40,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let profiles = {};
     let currentProfileId = 'default';
     let extractedEmails = new Set();
-    let isWatchModeActive = false;
+    // let isWatchModeActive = false; // Removed
 
     // Initialize
     await loadProfiles();
@@ -50,7 +48,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     extractedEmails = await loadExtractedHistory();
     updateHistoryCount();
     updateDeleteButton();
-    await checkWatchStatus();
+    updateDeleteButton();
+    // await checkWatchStatus(); // Removed
 
     // Event Listeners
     profileSelect.addEventListener('change', handleProfileChange);
@@ -103,101 +102,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    // Watch Mode
-    toggleWatchBtn.addEventListener('click', toggleWatchMode);
+    // Watch Mode Removed
+    // toggleWatchBtn.addEventListener('click', toggleWatchMode);
 
     // ===================================
-    // WATCH MODE FUNCTIONS
+    // WATCH MODE FUNCTIONS REMOVED
     // ===================================
-    async function checkWatchStatus() {
-        try {
-            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-            if (!tab) return;
-
-            const { active } = await chrome.runtime.sendMessage({
-                type: 'GET_WATCH_STATUS',
-                tabId: tab.id
-            });
-            updateWatchUI(active);
-        } catch (e) {
-            console.error('Failed to get watch status', e);
-        }
-    }
-
-    async function toggleWatchMode() {
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        if (!tab || !tab.url.includes('linkedin.com')) {
-            showStatus('error', 'Please open LinkedIn first');
-            return;
-        }
-
-        if (isWatchModeActive) {
-            // STOP for this specific tab
-            try {
-                await chrome.runtime.sendMessage({
-                    type: 'STOP_WATCH_MODE',
-                    tabId: tab.id
-                });
-                updateWatchUI(false);
-                showStatus('success', 'Watch Mode Stopped (for this tab)');
-            } catch (e) {
-                showStatus('error', 'Failed to stop Watch Mode');
-            }
-        } else {
-            // START
-            // Validate inputs first
-            const webhookUrl = webhookUrlInput.value.trim();
-            if (!webhookUrl || !isValidUrl(webhookUrl)) {
-                showStatus('error', 'Please enter a valid Webhook URL first');
-                return;
-            }
-
-            try {
-                const refreshIntervalInput = document.getElementById('refreshInterval');
-                const maxBatchesInput = document.getElementById('maxBatches');
-
-                const config = {
-                    type: 'START_WATCH_MODE',
-                    tabId: tab.id,
-                    inputUrl: tab.url,
-                    profileId: currentProfileId,
-                    webhookUrl: webhookUrl,
-                    sheetName: sheetNameInput.value.trim(),
-                    keywords: getKeywordsArray(keywordsInput.value),
-                    mandatoryKeywords: getKeywordsArray(mandatoryKeywordsInput.value),
-                    targetTitles: getKeywordsArray(targetTitlesInput.value),
-                    excludeKeywords: getKeywordsArray(excludeKeywordsInput.value),
-                    scrollCount: Math.max(0, parseInt(scrollCountInput.value) || 0),
-                    refreshInterval: Math.max(1, parseInt(refreshIntervalInput.value) || 60),
-                    maxBatches: Math.max(1, parseInt(maxBatchesInput.value) || 50)
-                };
-
-                await chrome.runtime.sendMessage(config);
-                updateWatchUI(true);
-                showStatus('success', 'Watch Mode Started! Keep this tab open.');
-            } catch (e) {
-                console.error(e);
-                showStatus('error', 'Failed to start Watch Mode');
-            }
-        }
-    }
-
-    function updateWatchUI(active) {
-        isWatchModeActive = active;
-        if (active) {
-            watchStatusBadge.textContent = 'ON';
-            watchStatusBadge.className = 'badge-on'; // Add CSS for this
-            toggleWatchBtn.textContent = 'Stop Watch Mode';
-            toggleWatchBtn.className = 'btn-watch-stop'; // Add CSS
-            // Disable manual inputs while watching to avoid confusion? 
-            // Maybe not, just let them act as "overrides" or "next run settings" if saved.
-        } else {
-            watchStatusBadge.textContent = 'OFF';
-            watchStatusBadge.className = 'badge-off';
-            toggleWatchBtn.textContent = 'Start Watch Mode';
-            toggleWatchBtn.className = 'btn-watch-start';
-        }
-    }
 
 
     // ===================================
