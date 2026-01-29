@@ -46,19 +46,58 @@
   async function handleExtractionRequest(message) {
     const { keywords, mandatoryKeywords, targetTitles, excludeKeywords, scrollCount } = message;
 
-    // Auto-scroll if requested
-    if (scrollCount > 0) {
-      await autoScroll(scrollCount);
-    }
+    showOverlay('Initializing manual extraction...', 'info');
 
-    // Run extraction
-    return extractLinkedInData(keywords, mandatoryKeywords, targetTitles, excludeKeywords);
+    try {
+      // Auto-scroll if requested
+      if (scrollCount > 0) {
+        await autoScroll(scrollCount);
+      }
+
+      showOverlay('Extracting leads...', 'info');
+      // Run extraction
+      const result = extractLinkedInData(keywords, mandatoryKeywords, targetTitles, excludeKeywords);
+
+      const count = result.leads ? result.leads.length : 0;
+      if (count > 0) {
+        showOverlay(`Found ${count} leads! Sending...`, 'success');
+      } else {
+        showOverlay('No leads found matching criteria.', 'error');
+      }
+
+      return result;
+
+    } catch (error) {
+      console.error('Manual Extraction Error:', error);
+      const isInvalidated = error.message.includes('Extension context invalidated');
+      if (isInvalidated) {
+        showOverlay('Extension updated. Please REFRESH this page!', 'error');
+      } else {
+        showOverlay(`Error: ${error.message}`, 'error');
+      }
+      throw error; // Re-throw to send to popup
+    }
   }
 
 
   async function autoScroll(count) {
+    console.log(`Auto-scrolling ${count} times...`);
     for (let i = 0; i < count; i++) {
-      window.scrollBy({ top: window.innerHeight * 1.5, behavior: 'smooth' });
+      showOverlay(`Auto-scrolling ${i + 1}/${count}...`, 'scroll');
+
+      try {
+        window.scrollBy({ top: window.innerHeight * 1.5, behavior: 'smooth' });
+
+        // Try to click "Show more" buttons if present
+        const showMoreButtons = document.querySelectorAll('button.scaffold-finite-scroll__load-button, button[aria-label="Show more results"], .feed-shared-inline-show-more-text__button');
+        showMoreButtons.forEach(btn => {
+          if (btn && btn.offsetParent !== null) btn.click();
+        });
+
+      } catch (e) {
+        console.error("Scroll error:", e);
+      }
+
       // Randomish wait between scrolls
       await wait(1500 + Math.random() * 1000);
     }
@@ -465,6 +504,9 @@
         `;
 
     if (type === 'success' || type === 'error') {
+      // Don't auto-hide "Please Refresh" errors as they are critical
+      if (message.includes('Refresh')) return;
+
       setTimeout(() => {
         if (statusOverlay) {
           statusOverlay.style.opacity = '0';
@@ -529,6 +571,13 @@
       count = result.leads.length;
     } catch (extractError) {
       console.error('Watch Mode: Extraction error', extractError);
+
+      const isInvalidated = extractError.message && extractError.message.includes('Extension context invalidated');
+      if (isInvalidated) {
+        showOverlay('Extension updated. Please REFRESH this page!', 'error');
+        return; // Fatal error, stop everything
+      }
+
       showOverlay('Extraction error. Retrying soon...', 'error');
       // Still notify background to continue the loop
       try {
@@ -571,7 +620,12 @@
       }
     } catch (e) {
       console.error('Watch Mode: Connection error', e);
-      showOverlay('Connection error. Retrying soon...', 'error');
+      const isInvalidated = e.message.includes('Extension context invalidated');
+      if (isInvalidated) {
+        showOverlay('Extension updated. Please REFRESH this page!', 'error');
+      } else {
+        showOverlay('Connection error. Retrying soon...', 'error');
+      }
     }
   }
 
