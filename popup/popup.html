@@ -97,8 +97,17 @@
                         <line x1="9" y1="21" x2="9" y2="9" />
                     </svg>
                     Sheet Tab Name
+                    <span class="optional-badge">Optional</span>
                 </label>
-                <input type="text" id="sheetName" placeholder="Linkedin Hr Outreach" autocomplete="off">
+                <input type="text" id="sheetName" placeholder="Linkedin Hr Outreach" autocomplete="off"
+                    list="sheetNameOptions">
+                <datalist id="sheetNameOptions">
+                    <option value="Linkedin Hr Outreach">
+                    <option value="Sheet1">
+                    <option value="Leads">
+                    <option value="Candidates">
+                    <option value="Outreach">
+                </datalist>
                 <span class="input-hint">Exact name of the tab in your Google Sheet</span>
             </div>
 
