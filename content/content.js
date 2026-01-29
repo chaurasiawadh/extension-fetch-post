@@ -46,7 +46,7 @@
   async function handleExtractionRequest(message) {
     const { keywords, mandatoryKeywords, targetTitles, excludeKeywords, scrollCount } = message;
 
-    showOverlay('Initializing manual extraction...', 'info');
+    showOverlay('Initializing manual extraction...', 'info', 'Manual Mode');
 
     try {
       // Auto-scroll if requested
@@ -54,15 +54,15 @@
         await autoScroll(scrollCount);
       }
 
-      showOverlay('Extracting leads...', 'info');
+      showOverlay('Extracting leads...', 'info', 'Manual Mode');
       // Run extraction
       const result = extractLinkedInData(keywords, mandatoryKeywords, targetTitles, excludeKeywords);
 
       const count = result.leads ? result.leads.length : 0;
       if (count > 0) {
-        showOverlay(`Found ${count} leads! Sending...`, 'success');
+        showOverlay(`Found ${count} leads! Sending...`, 'success', 'Manual Mode');
       } else {
-        showOverlay('No leads found matching criteria.', 'error');
+        showOverlay('No leads found matching criteria.', 'error', 'Manual Mode');
       }
 
       return result;
@@ -71,9 +71,9 @@
       console.error('Manual Extraction Error:', error);
       const isInvalidated = error.message.includes('Extension context invalidated');
       if (isInvalidated) {
-        showOverlay('Extension updated. Please REFRESH this page!', 'error');
+        showOverlay('Extension updated. Please REFRESH this page!', 'error', 'Manual Mode');
       } else {
-        showOverlay(`Error: ${error.message}`, 'error');
+        showOverlay(`Error: ${error.message}`, 'error', 'Manual Mode');
       }
       throw error; // Re-throw to send to popup
     }
@@ -81,12 +81,40 @@
 
 
   async function autoScroll(count) {
-    console.log(`Auto-scrolling ${count} times...`);
+    console.log(`Auto-scrolling ${count} times using custom container logic...`);
+
+    // Helper to find the right scrollable matching user request
+    function findScrollable(el) {
+      while (el) {
+        const style = getComputedStyle(el);
+        const overflowY = style.overflowY;
+        if ((overflowY === "auto" || overflowY === "scroll") && el.scrollHeight > el.clientHeight) {
+          return el;
+        }
+        el = el.parentElement;
+      }
+      return document.scrollingElement || document.documentElement;
+    }
+
     for (let i = 0; i < count; i++) {
-      showOverlay(`Auto-scrolling ${i + 1}/${count}...`, 'scroll');
+      showOverlay(`Auto-scrolling ${i + 1}/${count}...`, 'scroll', 'Manual Mode');
 
       try {
-        window.scrollBy({ top: window.innerHeight * 1.5, behavior: 'smooth' });
+        // Core Logic from User Request
+        const content = document.querySelector(".scaffold-finite-scroll__content") ||
+          document.querySelector("main") ||
+          document.body;
+
+        const scroller = findScrollable(content);
+        const distance = 1000; // Fixed distance instead of prompt
+
+        if (scroller) {
+          scroller.scrollBy({ top: distance, behavior: 'smooth' });
+          console.log(`LLE Debug: Scrolled ${distance}px on`, scroller);
+        } else {
+          console.warn("LLE Debug: Scrollable container not found, falling back to window");
+          window.scrollBy({ top: distance, behavior: 'smooth' });
+        }
 
         // Try to click "Show more" buttons if present
         const showMoreButtons = document.querySelectorAll('button.scaffold-finite-scroll__load-button, button[aria-label="Show more results"], .feed-shared-inline-show-more-text__button');
@@ -462,7 +490,7 @@
 
   let statusOverlay = null;
 
-  function showOverlay(message, type = 'info') {
+  function showOverlay(message, type = 'info', title = 'Watch Mode') {
     if (!statusOverlay) {
       statusOverlay = document.createElement('div');
       statusOverlay.id = 'lle-watch-overlay';
@@ -498,7 +526,7 @@
     statusOverlay.innerHTML = `
             <div style="display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:8px;margin-bottom:4px;">
                 <span style="font-size:18px;">${icon}</span>
-                <span style="font-weight:600;color:${color}">Watch Mode</span>
+                <span style="font-weight:600;color:${color}">${title}</span>
             </div>
             <div style="line-height:1.4;opacity:0.9;">${message}</div>
         `;
