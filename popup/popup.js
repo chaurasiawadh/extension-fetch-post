@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const excludeKeywordTagsContainer = document.getElementById('excludeKeywordTags');
     const scrollCountInput = document.getElementById('scrollCount');
     const extractBtn = document.getElementById('extractBtn');
-    const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+    // const saveSettingsBtn = document.getElementById('saveSettingsBtn'); // Removed
     const clearHistoryBtn = document.getElementById('clearHistoryBtn');
     const historyCountEl = document.getElementById('historyCount');
     const statusBanner = document.getElementById('statusBanner');
@@ -76,7 +76,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     excludeKeywordsInput.addEventListener('input', updateExcludeKeywordTags);
     excludeKeywordsInput.addEventListener('blur', updateExcludeKeywordTags);
-    saveSettingsBtn.addEventListener('click', saveSettings);
+    excludeKeywordsInput.addEventListener('blur', updateExcludeKeywordTags);
+    // saveSettingsBtn.addEventListener('click', saveSettings); // Removed
+    // Manual Extraction
     // Manual Extraction
     extractBtn.addEventListener('click', extractLeads);
     clearHistoryBtn.addEventListener('click', clearHistory);
@@ -506,18 +508,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function updateSaveButtonStatus(text) {
-        const span = saveSettingsBtn.querySelector('span');
-        if (span) {
-            // Revert back after 2 seconds if it's the "Saved" state
-            if (text.includes('Saved')) {
-                span.textContent = text;
-                setTimeout(() => {
-                    span.textContent = 'Save Settings';
-                }, 2000);
-            } else {
-                span.textContent = text;
-            }
-        }
+        // Button removed, functionality replaced by auto-save silence or status banner if needed
+        // console.log('Auto-save status:', text);
     }
 
     function debounce(func, wait) {
