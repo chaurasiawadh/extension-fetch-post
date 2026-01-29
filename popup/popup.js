@@ -80,6 +80,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Manual Extraction
     extractBtn.addEventListener('click', extractLeads);
     clearHistoryBtn.addEventListener('click', clearHistory);
+    // Auto-Save Logic
+    const debouncedSave = debounce(async () => {
+        await saveCurrentProfileData();
+        updateSaveButtonStatus('Saved ✓');
+    }, 800);
+
+    const inputsToAutoSave = [
+        webhookUrlInput, sheetNameInput, keywordsInput,
+        mandatoryKeywordsInput, targetTitlesInput,
+        excludeKeywordsInput, scrollCountInput
+    ];
+
+    inputsToAutoSave.forEach(input => {
+        if (input) {
+            input.addEventListener('input', () => {
+                updateSaveButtonStatus('Saving...');
+                debouncedSave();
+            });
+        }
+    });
+
     // Watch Mode
     toggleWatchBtn.addEventListener('click', toggleWatchMode);
 
@@ -480,7 +501,35 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function saveSettings() {
         await saveCurrentProfileData();
+        updateSaveButtonStatus('Saved ✓');
         showStatus('success', 'Settings saved');
+    }
+
+    function updateSaveButtonStatus(text) {
+        const span = saveSettingsBtn.querySelector('span');
+        if (span) {
+            // Revert back after 2 seconds if it's the "Saved" state
+            if (text.includes('Saved')) {
+                span.textContent = text;
+                setTimeout(() => {
+                    span.textContent = 'Save Settings';
+                }, 2000);
+            } else {
+                span.textContent = text;
+            }
+        }
+    }
+
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
     }
 
     function updateKeywordTags() {

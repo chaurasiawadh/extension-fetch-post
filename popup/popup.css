@@ -1,21 +1,21 @@
 /* Modern Dark Theme for LinkedIn Lead Extractor */
 :root {
-    --bg-primary: #1a1a2e;
-    --bg-secondary: #16213e;
-    --bg-tertiary: #0f0f23;
+    --bg-primary: #fdfbf7;
+    --bg-secondary: #ffffff;
+    --bg-tertiary: #f3f0e6;
     --accent-primary: #0077b5;
     --accent-secondary: #00a0dc;
     --accent-gradient: linear-gradient(135deg, #0077b5 0%, #00a0dc 100%);
-    --text-primary: #ffffff;
-    --text-secondary: #a0aec0;
+    --text-primary: #2d3748;
+    --text-secondary: #4a5568;
     --text-muted: #718096;
-    --border-color: rgba(255, 255, 255, 0.1);
-    --success: #48bb78;
-    --warning: #ecc94b;
-    --error: #fc8181;
-    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.2);
-    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
-    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4);
+    --border-color: #e2e8f0;
+    --success: #38a169;
+    --warning: #d69e2e;
+    --error: #e53e3e;
+    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
     --radius-sm: 6px;
     --radius-md: 10px;
     --radius-lg: 14px;
@@ -528,7 +528,7 @@ body {
     cursor: pointer;
     transition: var(--transition);
     appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23718096' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%234a5568' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 10px center;
     padding-right: 30px;
@@ -591,12 +591,13 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.7);
+    background: rgba(0, 0, 0, 0.5);
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 100;
     animation: fadeIn 0.2s ease;
+    backdrop-filter: blur(2px);
 }
 
 .modal.hidden {
@@ -694,8 +695,9 @@ body {
 
 /* Watch Mode Section */
 .watch-mode-container {
-    background: rgba(0, 0, 0, 0.25);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
     border-radius: var(--radius-md);
     padding: 16px;
     display: flex;
@@ -735,10 +737,10 @@ body {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    background: rgba(0, 0, 0, 0.15);
+    background: var(--bg-tertiary);
     padding: 10px;
     border-radius: var(--radius-sm);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
 }
 
 .setting-row {
@@ -767,7 +769,7 @@ body {
     width: 32px;
     background: transparent;
     border: none;
-    color: white;
+    color: var(--text-primary);
     font-size: 12px;
     font-weight: 600;
     text-align: right;
@@ -802,18 +804,16 @@ body {
 }
 
 .btn-watch-start {
-    background: rgba(0, 119, 181, 0.15);
-    color: var(--accent-secondary);
-    border: 1px solid rgba(0, 119, 181, 0.3);
-    box-shadow: 0 2px 8px rgba(0, 119, 181, 0.15);
+    background: var(--accent-gradient);
     color: white;
-    /* Ensure text is white */
+    box-shadow: var(--shadow-md);
+    border: none;
 }
 
 .btn-watch-start:hover {
-    background: rgba(0, 119, 181, 0.25);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 119, 181, 0.25);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+    opacity: 0.95;
 }
 
 .btn-watch-stop {
