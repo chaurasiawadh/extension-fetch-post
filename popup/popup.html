@@ -71,11 +71,6 @@
             </div>
         </div>
 
-        <!-- Status Banner -->
-        <div id="statusBanner" class="status-banner hidden">
-            <span id="statusIcon"></span>
-            <span id="statusText"></span>
-        </div>
 
         <!-- Main Content -->
         <main class="main-content">
@@ -107,18 +102,33 @@
                 <span class="input-hint">Exact name of the tab in your Google Sheet</span>
             </div>
 
-            <!-- Keyword Filters -->
+            <!-- Keyword Filters (OR) -->
             <div class="input-group">
                 <label for="keywords">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
                     </svg>
-                    Keyword Filters
+                    Keyword Filters (OR)
                     <span class="optional-badge">Optional</span>
                 </label>
                 <input type="text" id="keywords" placeholder="hiring, frontend, remote, react..." autocomplete="off">
                 <span class="input-hint">Comma-separated. Only extracts posts containing ANY of these keywords</span>
                 <div id="keywordTags" class="keyword-tags"></div>
+            </div>
+
+            <!-- Mandatory Keywords (AND) -->
+            <div class="input-group">
+                <label for="mandatoryKeywords">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2v20M2 12h20" />
+                    </svg>
+                    Mandatory Keywords (AND)
+                    <span class="optional-badge">Optional</span>
+                </label>
+                <input type="text" id="mandatoryKeywords" placeholder="must-have, specific, exact..."
+                    autocomplete="off">
+                <span class="input-hint">Comma-separated. ONLY extracts posts containing ALL of these keywords</span>
+                <div id="mandatoryKeywordTags" class="keyword-tags mandatory"></div>
             </div>
 
             <!-- Target Poster Titles -->
@@ -222,6 +232,12 @@
                         </div>
                     </div>
                 </div>
+            </div>
+
+            <!-- Status Banner -->
+            <div id="statusBanner" class="status-banner hidden">
+                <span id="statusIcon"></span>
+                <span id="statusText"></span>
             </div>
 
             <button id="toggleWatchBtn" class="btn-watch-start">

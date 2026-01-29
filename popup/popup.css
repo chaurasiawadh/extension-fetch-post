@@ -214,6 +214,13 @@ body {
     color: var(--error);
 }
 
+/* Mandatory keyword tags - green theme */
+.keyword-tags.mandatory .keyword-tag {
+    background: rgba(72, 187, 120, 0.15);
+    border: 1px solid rgba(72, 187, 120, 0.3);
+    color: var(--success);
+}
+
 
 @keyframes fadeIn {
     from {

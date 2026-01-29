@@ -47,6 +47,29 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             .catch(error => sendResponse({ success: false, error: error.message }));
         return true;
     }
+
+    // DEBUG: Dump all storage for diagnosis
+    if (message.type === 'DEBUG_STORAGE') {
+        chrome.storage.local.get(null, (items) => {
+            console.log('=== FULL STORAGE DUMP ===');
+            Object.keys(items).forEach(key => {
+                if (key.startsWith('extractedEmails_')) {
+                    const arr = items[key];
+                    console.log(`${key}: ${Array.isArray(arr) ? arr.length : 'N/A'} items`);
+                    if (Array.isArray(arr) && arr.length > 0) {
+                        console.log(`  First 5: ${arr.slice(0, 5).join(', ')}`);
+                    }
+                } else if (key === 'watchSessions') {
+                    console.log('watchSessions:', JSON.stringify(items[key], null, 2));
+                } else if (key === 'currentProfileId') {
+                    console.log('currentProfileId:', items[key]);
+                }
+            });
+            console.log('=========================');
+            sendResponse({ success: true });
+        });
+        return true;
+    }
 });
 
 // Fallback Alarm Listener
@@ -67,11 +90,24 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 // In-memory session store (backed by storage.local for persistence)
 // Structure: { [tabId]: { active: true, profileId: '...', ... } }
 let watchSessions = {};
+let sessionsLoaded = false;
 
-// Load sessions on startup
+// Helper function to ensure sessions are loaded before use
+async function ensureSessionsLoaded() {
+    if (!sessionsLoaded) {
+        const result = await chrome.storage.local.get(['watchSessions']);
+        watchSessions = result.watchSessions || {};
+        sessionsLoaded = true;
+        console.log('Loaded Watch Sessions:', Object.keys(watchSessions));
+    }
+    return watchSessions;
+}
+
+// Also try to load on startup (non-blocking)
 chrome.storage.local.get(['watchSessions'], (result) => {
     watchSessions = result.watchSessions || {};
-    console.log('Loaded Watch Sessions:', watchSessions);
+    sessionsLoaded = true;
+    console.log('Initial Watch Sessions load:', Object.keys(watchSessions));
 });
 
 async function startWatchMode(config) {
@@ -85,6 +121,8 @@ async function startWatchMode(config) {
         webhookUrl: config.webhookUrl,
         sheetName: config.sheetName,
         keywords: config.keywords,
+        mandatoryKeywords: config.mandatoryKeywords,
+        targetTitles: config.targetTitles || [],
         excludeKeywords: config.excludeKeywords,
         scrollCount: config.scrollCount || 3,
         refreshInterval: config.refreshInterval || 60,
@@ -124,6 +162,7 @@ async function getWatchStatus(tabId) {
 }
 
 async function executeWatchReload(tabId) {
+    await ensureSessionsLoaded();
     const session = watchSessions[tabId];
     if (!session || !session.active) return;
 
@@ -136,6 +175,9 @@ async function executeWatchReload(tabId) {
 }
 
 async function checkAndTriggerWatch(tabId, url) {
+    // Ensure sessions are loaded
+    await ensureSessionsLoaded();
+
     // Check if this tab is being watched
     const session = watchSessions[tabId];
     if (!session || !session.active) return;
@@ -155,6 +197,8 @@ async function checkAndTriggerWatch(tabId, url) {
         chrome.tabs.sendMessage(tabId, {
             type: 'EXECUTE_WATCH_RUN',
             keywords: session.keywords,
+            mandatoryKeywords: session.mandatoryKeywords,
+            targetTitles: session.targetTitles,
             excludeKeywords: session.excludeKeywords,
             scrollCount: session.scrollCount
         });
@@ -167,9 +211,28 @@ async function checkAndTriggerWatch(tabId, url) {
 async function processWatchData(senderTabId, extractionResult) {
     console.log(`Processing Watch Mode Data from Tab ${senderTabId}`);
 
+    // Ensure sessions are loaded from storage
+    await ensureSessionsLoaded();
+
     const session = watchSessions[senderTabId];
-    if (!session || !session.active) {
-        return { success: false, error: 'Watch mode inactive for this tab' };
+    if (!session) {
+        console.error('Watch Mode: No session found for tab', senderTabId, 'Available sessions:', Object.keys(watchSessions));
+        // Try to still return success to prevent error overlay
+        return { success: true, newLeadsCount: 0, warning: 'Session not found' };
+    }
+
+    // DEBUG: Log full session details
+    console.log('=== WATCH MODE SESSION DEBUG ===');
+    console.log('Tab ID:', senderTabId);
+    console.log('Session Profile ID:', session.profileId);
+    console.log('Session Sheet Name:', session.sheetName);
+    console.log('Session Active:', session.active);
+    console.log('Session Batch Count:', session.currentBatchCount);
+    console.log('=================================');
+
+    if (!session.active) {
+        console.warn('Watch Mode: Session inactive for tab', senderTabId);
+        return { success: true, newLeadsCount: 0, warning: 'Session inactive' };
     }
 
     // --- 0. UPDATE BATCH COUNT ---
@@ -188,7 +251,39 @@ async function processWatchData(senderTabId, extractionResult) {
         const storageData = await chrome.storage.local.get([storageKey]);
         const history = new Set(storageData[storageKey] || []);
 
-        const newLeads = leads.filter(l => l.email && !history.has(l.email.toLowerCase()));
+        // DEBUG: Log deduplication details
+        console.log('=== WATCH MODE DEDUPLICATION DEBUG ===');
+        console.log('Profile ID:', profileId);
+        console.log('Storage Key:', storageKey);
+        console.log('History Size:', history.size);
+        console.log('First 10 history items:', Array.from(history).slice(0, 10));
+        console.log('Leads to check:', leads.length);
+
+        // Log first 5 leads and their dedup status
+        leads.slice(0, 5).forEach((l, i) => {
+            const email = l.email?.toLowerCase();
+            const jobLink = l.jobLink?.toLowerCase();
+            const inHistory = email ? history.has(email) : (jobLink ? history.has(jobLink) : 'N/A');
+            console.log(`Lead ${i + 1}: email="${email || 'NONE'}", jobLink="${jobLink?.substring(0, 50) || 'NONE'}", inHistory=${inHistory}`);
+        });
+
+        const newLeads = leads.filter(l => {
+            const hasEmail = l.email && l.email.trim() !== '';
+            const hasJobLink = l.jobLink && l.jobLink.trim() !== '';
+
+            if (hasEmail) {
+                const isDuplicate = history.has(l.email.toLowerCase());
+                return !isDuplicate;
+            } else if (hasJobLink) {
+                // If no email, deduplicate by job link
+                const isDuplicate = history.has(l.jobLink.toLowerCase());
+                return !isDuplicate;
+            }
+            return false;
+        });
+
+        console.log('New leads after dedup:', newLeads.length);
+        console.log('=== END DEBUG ===');
 
         if (newLeads.length > 0) {
             const payload = {
@@ -205,7 +300,10 @@ async function processWatchData(senderTabId, extractionResult) {
 
             const webhookResult = await handleWebhookSend(session.webhookUrl, payload);
             if (webhookResult.success) {
-                newLeads.forEach(l => history.add(l.email.toLowerCase()));
+                newLeads.forEach(l => {
+                    if (l.email) history.add(l.email.toLowerCase());
+                    else if (l.jobLink) history.add(l.jobLink.toLowerCase());
+                });
                 const historyArray = Array.from(history).slice(-5000);
                 await chrome.storage.local.set({ [storageKey]: historyArray });
 
@@ -240,6 +338,8 @@ async function processWatchData(senderTabId, extractionResult) {
                 type: 'CONTINUE_WATCH_BATCH',
                 scrollCount: session.scrollCount,
                 keywords: session.keywords,
+                mandatoryKeywords: session.mandatoryKeywords,
+                targetTitles: session.targetTitles,
                 excludeKeywords: session.excludeKeywords
             }).catch(() => console.log('Tab closed?'));
         }, 5000);
@@ -275,8 +375,15 @@ async function handleWebhookSend(webhookUrl, data) {
     }
 }
 
-chrome.runtime.onInstalled.addListener((details) => {
+chrome.runtime.onInstalled.addListener(async (details) => {
     if (details.reason === 'install') {
-        chrome.storage.local.set({ profiles: {}, watchSessions: {} });
+        const current = await chrome.storage.local.get(['profiles', 'watchSessions']);
+        const updates = {};
+        if (!current.profiles) updates.profiles = {};
+        if (!current.watchSessions) updates.watchSessions = {};
+
+        if (Object.keys(updates).length > 0) {
+            await chrome.storage.local.set(updates);
+        }
     }
 });

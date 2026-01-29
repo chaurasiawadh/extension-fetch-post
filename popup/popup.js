@@ -6,6 +6,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const sheetNameInput = document.getElementById('sheetName');
     const keywordsInput = document.getElementById('keywords');
     const keywordTagsContainer = document.getElementById('keywordTags');
+    const mandatoryKeywordsInput = document.getElementById('mandatoryKeywords');
+    const mandatoryKeywordTagsContainer = document.getElementById('mandatoryKeywordTags');
     const targetTitlesInput = document.getElementById('targetTitles');
     const targetTitleTagsContainer = document.getElementById('targetTitleTags');
     const excludeKeywordsInput = document.getElementById('excludeKeywords');
@@ -66,6 +68,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     keywordsInput.addEventListener('input', updateKeywordTags);
     keywordsInput.addEventListener('blur', updateKeywordTags);
+    mandatoryKeywordsInput.addEventListener('input', updateMandatoryKeywordTags);
+    mandatoryKeywordsInput.addEventListener('blur', updateMandatoryKeywordTags);
     if (targetTitlesInput) {
         targetTitlesInput.addEventListener('input', updateTargetTitleTags);
         targetTitlesInput.addEventListener('blur', updateTargetTitleTags);
@@ -137,6 +141,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     webhookUrl: webhookUrl,
                     sheetName: sheetNameInput.value.trim(),
                     keywords: getKeywordsArray(keywordsInput.value),
+                    mandatoryKeywords: getKeywordsArray(mandatoryKeywordsInput.value),
                     targetTitles: getKeywordsArray(targetTitlesInput.value),
                     excludeKeywords: getKeywordsArray(excludeKeywordsInput.value),
                     scrollCount: Math.max(0, parseInt(scrollCountInput.value) || 0),
@@ -183,6 +188,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         const keywords = getKeywordsArray(keywordsInput.value);
+        const mandatoryKeywords = getKeywordsArray(mandatoryKeywordsInput.value);
         const targetTitles = getKeywordsArray(targetTitlesInput.value);
         const excludeKeywords = getKeywordsArray(excludeKeywordsInput.value);
         const scrollCount = Math.max(0, parseInt(scrollCountInput.value) || 0);
@@ -200,10 +206,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
 
-            // Send message to Content Script
             const response = await chrome.tabs.sendMessage(tab.id, {
                 type: 'EXTRACT',
                 keywords,
+                mandatoryKeywords,
                 targetTitles,
                 excludeKeywords,
                 scrollCount
@@ -229,11 +235,38 @@ document.addEventListener('DOMContentLoaded', async () => {
         let leads = data.leads || [];
         const totalScanned = data.totalScanned || 0;
 
+        // DEBUG: Log deduplication details for comparison with Watch Mode
+        console.log('=== MANUAL EXTRACTION DEDUPLICATION DEBUG ===');
+        console.log('Profile ID:', currentProfileId);
+        console.log('History Size:', extractedEmails.size);
+        console.log('First 10 history items:', Array.from(extractedEmails).slice(0, 10));
+        console.log('Leads to check:', leads.length);
+
+        // Log first 5 leads and their dedup status
+        leads.slice(0, 5).forEach((lead, i) => {
+            const email = lead.email?.toLowerCase();
+            const jobLink = lead.jobLink?.toLowerCase();
+            const inHistory = email ? extractedEmails.has(email) : (jobLink ? extractedEmails.has(jobLink) : 'N/A');
+            console.log(`Lead ${i + 1}: email="${email || 'NONE'}", jobLink="${jobLink?.substring(0, 50) || 'NONE'}", inHistory=${inHistory}`);
+        });
+
         // Dedup against history
         const beforeCount = leads.length;
         leads = leads.filter(lead => {
-            return lead.email && !extractedEmails.has(lead.email.toLowerCase());
+            const hasEmail = lead.email && lead.email.trim() !== '';
+            const hasJobLink = lead.jobLink && lead.jobLink.trim() !== '';
+
+            if (hasEmail) {
+                return !extractedEmails.has(lead.email.toLowerCase());
+            } else if (hasJobLink) {
+                // If no email, deduplicate by job link
+                return !extractedEmails.has(lead.jobLink.toLowerCase());
+            }
+            return false;
         });
+
+        console.log('New leads after dedup:', leads.length);
+        console.log('=== END DEBUG ===');
 
         const filteredCount = leads.length;
         const duplicates = beforeCount - filteredCount;
@@ -264,7 +297,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     sheetName,
                     totalScanned,
                     totalExtracted: leads.length,
-                    keywords, // Post Content Keywords
+                    keywords, // Post Content Keywords (OR)
+                    mandatoryKeywords: getKeywordsArray(mandatoryKeywordsInput.value),
                     targetTitles: getKeywordsArray(targetTitlesInput.value),
                     searchUrl,
                     timestamp: new Date().toISOString()
@@ -274,8 +308,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (response.success) {
             // Save history
-            const newEmails = leads.map(l => l.email);
-            extractedEmails = await saveExtractedHistory(newEmails);
+            const newHistoryItems = leads.map(l => l.email || l.jobLink).filter(item => item);
+            extractedEmails = await saveExtractedHistory(newHistoryItems);
             updateHistoryCount();
             updateStats(totalScanned, filteredCount, leads.length);
             showStatus('success', `✓ Sent ${leads.length} new leads!`);
@@ -299,6 +333,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     webhookUrl: '',
                     sheetName: 'Linkedin Hr Outreach',
                     keywords: '',
+                    mandatoryKeywords: '',
                     targetTitles: '',
                     excludeKeywords: '',
                     scrollCount: 5
@@ -328,10 +363,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             webhookUrlInput.value = profile.webhookUrl || '';
             sheetNameInput.value = profile.sheetName || '';
             keywordsInput.value = profile.keywords || '';
+            mandatoryKeywordsInput.value = profile.mandatoryKeywords || '';
             targetTitlesInput.value = profile.targetTitles || '';
             excludeKeywordsInput.value = profile.excludeKeywords || '';
             scrollCountInput.value = profile.scrollCount !== undefined ? profile.scrollCount : 5;
             updateKeywordTags();
+            updateMandatoryKeywordTags();
             updateTargetTitleTags();
             updateExcludeKeywordTags();
         }
@@ -354,6 +391,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             webhookUrl: webhookUrlInput.value.trim(),
             sheetName: sheetNameInput.value.trim(),
             keywords: keywordsInput.value.trim(),
+            mandatoryKeywords: mandatoryKeywordsInput.value.trim(),
             targetTitles: targetTitlesInput.value.trim(),
             excludeKeywords: excludeKeywordsInput.value.trim(),
             scrollCount: parseInt(scrollCountInput.value) || 5
@@ -379,7 +417,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         profiles[id] = {
             id, name,
             webhookUrl: webhookUrlInput.value.trim(),
-            sheetName: '', keywords: '', targetTitles: '', excludeKeywords: '', scrollCount: 5
+            sheetName: '', keywords: '', mandatoryKeywords: '', targetTitles: '', excludeKeywords: '', scrollCount: 5
         };
         currentProfileId = id;
         await chrome.storage.local.set({ profiles, currentProfileId });
@@ -429,7 +467,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function updateHistoryCount() {
         const count = extractedEmails.size;
-        historyCountEl.textContent = count > 0 ? `📊 ${count} emails in history` : '';
+        historyCountEl.textContent = count > 0 ? `📊 ${count} leads in history` : '';
     }
 
     async function clearHistory() {
@@ -448,6 +486,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     function updateKeywordTags() {
         const kws = getKeywordsArray(keywordsInput.value);
         keywordTagsContainer.innerHTML = kws.map(k => `<span class="keyword-tag">${escapeHtml(k)}</span>`).join('');
+    }
+
+    function updateMandatoryKeywordTags() {
+        const kws = getKeywordsArray(mandatoryKeywordsInput.value);
+        mandatoryKeywordTagsContainer.innerHTML = kws.map(k => `<span class="keyword-tag">${escapeHtml(k)}</span>`).join('');
     }
 
     function updateTargetTitleTags() {

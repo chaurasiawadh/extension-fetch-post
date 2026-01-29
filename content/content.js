@@ -20,11 +20,15 @@
       return true; // Async response
     }
     else if (message.type === 'EXECUTE_WATCH_RUN') {
-      handleWatchModeRun(message);
+      handleWatchModeRun(message).catch(err => {
+        console.error('Watch Mode: EXECUTE_WATCH_RUN error', err);
+      });
     }
     else if (message.type === 'CONTINUE_WATCH_BATCH') {
       // Just triggering the same logic, but we can customize if needed
-      handleWatchModeRun(message);
+      handleWatchModeRun(message).catch(err => {
+        console.error('Watch Mode: CONTINUE_WATCH_BATCH error', err);
+      });
     }
   });
 
@@ -40,7 +44,7 @@
   // ============================================================================
 
   async function handleExtractionRequest(message) {
-    const { keywords, targetTitles, excludeKeywords, scrollCount } = message;
+    const { keywords, mandatoryKeywords, targetTitles, excludeKeywords, scrollCount } = message;
 
     // Auto-scroll if requested
     if (scrollCount > 0) {
@@ -48,38 +52,9 @@
     }
 
     // Run extraction
-    return extractLinkedInData(keywords, targetTitles, excludeKeywords);
+    return extractLinkedInData(keywords, mandatoryKeywords, targetTitles, excludeKeywords);
   }
 
-  async function handleWatchModeRun(message) {
-    const { keywords, targetTitles, excludeKeywords, scrollCount } = message;
-
-    console.log('Watch Mode: Starting run...');
-
-    // Random start delay (human-like)
-    const startDelay = Math.random() * 5000 + 2000; // 2-7 seconds
-    await wait(startDelay);
-
-    // Scroll (human reading)
-    // Use provided scrollCount if available, else default to 3
-    const scrolls = scrollCount !== undefined ? scrollCount : 3;
-    await autoScroll(scrolls);
-
-    // Extract
-    const result = extractLinkedInData(keywords, targetTitles, excludeKeywords);
-
-    // Send data back to background to handle webhook
-    // We include a flag 'isWatchMode: true'
-    if (result && result.leads.length > 0) {
-      chrome.runtime.sendMessage({
-        type: 'WATCH_DATA_EXTRACTED',
-        data: result,
-        keywords: keywords
-      });
-    } else {
-      console.log('Watch Mode: No leads found this run.');
-    }
-  }
 
   async function autoScroll(count) {
     for (let i = 0; i < count; i++) {
@@ -98,7 +73,7 @@
   // ============================================================================
   // EXTRACTION LOGIC (Ported from popup.js)
   // ============================================================================
-  function extractLinkedInData(keywords, targetTitles = [], excludeKeywords = []) {
+  function extractLinkedInData(keywords, mandatoryKeywords = [], targetTitles = [], excludeKeywords = []) {
     const leads = [];
     let totalScanned = 0;
 
@@ -164,13 +139,29 @@
     }
 
     // Selectors
+    // UPDATED: Added data-view-name strategies which are more stable
     const postSelectors = [
-      '.feed-shared-update-v2', '.occludable-update',
-      '.search-results__list .search-result', '.reusable-search__result-container',
-      '.comments-comment-item', '.entity-result', '[data-chameleon-result-urn]'
+      // 2025/2026 Stable Selectors (Data Attributes)
+      '[data-view-name="feed-full-update"]',
+      '[data-view-name="search-entity-result-universal-template"]',
+      '[data-view-name="job-card"]',
+
+      // Legacy/Fallback Classes
+      '.feed-shared-update-v2',
+      '.occludable-update',
+      '.reusable-search__result-container',
+      '.entity-result',
+      '[data-chameleon-result-urn]',
+
+      // Generic containers often used in search
+      'li.reusable-search__result-container',
+      'div.feed-shared-update-v2'
     ];
 
     const elements = document.querySelectorAll(postSelectors.join(', '));
+    console.log(`LLE DEBUG: Found ${elements.length} elements using selectors:`, postSelectors);
+
+
 
     elements.forEach((element) => {
       totalScanned++;
@@ -228,11 +219,50 @@
           if (updateContainer) postContent = updateContainer.textContent?.trim() || '';
         }
 
-        const postLink = element.querySelector(
-          'a[href*="/feed/update/"], a[href*="/posts/"], .feed-shared-control-menu__trigger'
-        );
+        // Post URL Detection (Refined - Multiple strategies)
         let postUrl = '';
-        if (postLink?.href) postUrl = postLink.href.split('?')[0];
+
+        // Strategy 1: Direct link selectors
+        const postLinkSelectors = [
+          'a[href*="/feed/update/"]',
+          'a[href*="/posts/"]',
+          '.update-components-actor__sub-description a[href*="/feed/update/"]',
+          '.feed-shared-actor__sub-description a[href*="/feed/update/"]',
+          'a.app-aware-link[href*="/feed/update/"]',
+          'a.app-aware-link[href*="/posts/"]',
+          // Time/Age links often contain post URLs
+          '.update-components-actor__sub-description-link',
+          '.feed-shared-actor__sub-description a',
+          'a.update-components-actor__meta-link'
+        ];
+
+        for (const sel of postLinkSelectors) {
+          const link = element.querySelector(sel);
+          if (link?.href && (link.href.includes('/feed/update/') || link.href.includes('/posts/'))) {
+            postUrl = link.href.split('?')[0];
+            break;
+          }
+        }
+
+        // Strategy 2: Look for any link containing urn:li:activity (LinkedIn post ID)
+        if (!postUrl) {
+          const allLinks = element.querySelectorAll('a');
+          for (const link of allLinks) {
+            const href = link.href || '';
+            if (href.includes('/feed/update/urn:li:') || href.includes('/posts/')) {
+              postUrl = href.split('?')[0];
+              break;
+            }
+          }
+        }
+
+        // Strategy 3: Check data attributes for urn
+        if (!postUrl) {
+          const urn = element.getAttribute('data-urn') || element.getAttribute('data-id');
+          if (urn && urn.includes('urn:li:activity:')) {
+            postUrl = `https://www.linkedin.com/feed/update/${urn}`;
+          }
+        }
 
         // Email Search
         const fullText = element.textContent || '';
@@ -266,39 +296,102 @@
           }
         }
 
-        // Exclude Keywords Filter
+        // Job Link Search (Refined)
+        let jobLink = '';
+        // 1. Look for 'View job' buttons or links
+        const viewJobLink = element.querySelector('a[href*="/jobs/view/"], a.feed-shared-update-v2__job-content-link');
+        if (viewJobLink) {
+          jobLink = viewJobLink.href.split('?')[0];
+        }
+
+        // 2. Look for external links that might be job applications
+        if (!jobLink) {
+          const links = element.querySelectorAll('a');
+          for (const link of links) {
+            const href = link.href.toLowerCase();
+            const text = link.textContent?.toLowerCase() || '';
+
+            // Skip common non-job links
+            if (href.includes('mailto:') ||
+              href.includes('linkedin.com/in/') ||
+              href.includes('linkedin.com/company/') ||
+              href.includes('hashtag') ||
+              href.includes('search/results') ||
+              href.includes('whatsapp.com/channel') ||
+              href === '#' || href === '') continue;
+
+            if (href.includes('job') || href.includes('apply') || href.includes('career') ||
+              text.includes('apply') || text.includes('job') || text.includes('hiring') ||
+              text.includes('google.com/forms') || text.includes('typeform.com')) {
+              jobLink = link.href;
+              break;
+            }
+          }
+        }
+
+        // Filtering logic - uses postContent for better accuracy
+        const searchTarget = (postContent + ' ' + title + ' ' + name).toLowerCase();
+
+        // Exclude Keywords Filter (HIGHEST PRIORITY) - EXACT TERM MATCHING
         if (excludeKeywords && excludeKeywords.length > 0) {
           const hasExcludeKeyword = excludeKeywords.some(keyword => {
-            const kw = keyword.trim();
-            if (!kw) return false;
-
-            // Escape special regex chars
-            const escaped = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
             try {
-              // Word boundary check: \b matches start/end of word
-              // This prevents "Java" from matching "Javascript"
-              const pattern = new RegExp(`\\b${escaped}\\b`, 'i');
-              return pattern.test(fullText);
+              const term = keyword.trim().toLowerCase();
+              if (!term || term.length === 0) return false;
+
+              // Exact term matching - keyword must be standalone, not part of a larger word
+              // e.g., "JAVA" should NOT match "JavaScript", but SHOULD match "JAVA developer"
+              let pos = 0;
+              while ((pos = searchTarget.indexOf(term, pos)) !== -1) {
+                const charBefore = pos > 0 ? searchTarget[pos - 1] : '';
+                const charAfter = pos + term.length < searchTarget.length
+                  ? searchTarget[pos + term.length]
+                  : '';
+
+                // Check if term boundaries are valid
+                const termStartsAlphaNum = /[a-z0-9]/i.test(term.charAt(0));
+                const termEndsAlphaNum = /[a-z0-9]/i.test(term.charAt(term.length - 1));
+                const beforeIsAlphaNum = charBefore ? /[a-z0-9]/i.test(charBefore) : false;
+                const afterIsAlphaNum = charAfter ? /[a-z0-9]/i.test(charAfter) : false;
+
+                // If term starts with alphanumeric, char before must NOT be alphanumeric
+                // If term ends with alphanumeric, char after must NOT be alphanumeric
+                const startOk = !termStartsAlphaNum || !beforeIsAlphaNum;
+                const endOk = !termEndsAlphaNum || !afterIsAlphaNum;
+
+                if (startOk && endOk) {
+                  return true; // Found exact match
+                }
+
+                pos++;
+              }
+              return false;
             } catch (e) {
-              // Fallback to simple includes if regex fails (rare)
-              return fullText.toLowerCase().includes(kw.toLowerCase());
+              console.error('Error checking exclude keyword:', keyword, e);
+              return false;
             }
           });
           if (hasExcludeKeyword) return;
         }
 
-        // Positive Keywords Filter
+        // Positive Keywords Filter (OR Logic)
         if (keywords && keywords.length > 0) {
-          const textToSearch = fullText.toLowerCase();
           const hasKeyword = keywords.some(keyword => {
-            return textToSearch.includes(keyword.toLowerCase().trim());
+            return searchTarget.includes(keyword.toLowerCase().trim());
           });
           if (!hasKeyword) return;
         }
 
+        // Mandatory Keywords Filter (AND Logic)
+        if (mandatoryKeywords && mandatoryKeywords.length > 0) {
+          const hasAllMandatory = mandatoryKeywords.every(keyword => {
+            return searchTarget.includes(keyword.toLowerCase().trim());
+          });
+          if (!hasAllMandatory) return;
+        }
+
         // Add Lead
-        if (name || title || email) {
+        if (name || title || email || jobLink) {
           let preview = postContent;
           if (!preview || preview.length < 50) {
             let tempText = fullText;
@@ -309,10 +402,10 @@
           preview = preview.replace(/\s+/g, ' ').replace(/^[•·\-\s]+/, '').trim();
 
           leads.push({
-            name, title, profileUrl, postUrl, email,
+            name, title, profileUrl, postUrl, email, jobLink,
             postPreview: preview.substring(0, 500),
             extractedAt: new Date().toISOString(),
-            matchedKeywords: keywords ? keywords.filter(kw => fullText.toLowerCase().includes(kw.toLowerCase())) : []
+            matchedKeywords: keywords ? keywords.filter(kw => searchTarget.includes(kw.toLowerCase().trim())) : []
           });
         }
       } catch (err) {
@@ -387,7 +480,7 @@
   }
 
   async function handleWatchModeRun(message) {
-    const { keywords, excludeKeywords, scrollCount } = message;
+    const { keywords, mandatoryKeywords, targetTitles, excludeKeywords, scrollCount } = message;
 
     showOverlay('Initializing scan...', 'info');
 
@@ -399,43 +492,86 @@
 
     for (let i = 0; i < scrolls; i++) {
       showOverlay(`Auto-scrolling page ${i + 1}/${scrolls}...`, 'scroll');
-      window.scrollBy({ top: window.innerHeight * 1.5, behavior: 'smooth' });
-      await wait(2000 + Math.random() * 1000);
+
+      // Attempt smooth scroll
+      window.scrollBy({ top: window.innerHeight * 1.2, behavior: 'smooth' });
+
+      // Look for "Show more results" or similar buttons (often found in search/feed)
+      const showMoreButtons = document.querySelectorAll('button.scaffold-finite-scroll__load-button, button[aria-label="Show more results"], .feed-shared-inline-show-more-text__button');
+      showMoreButtons.forEach(btn => {
+        if (btn && btn.offsetParent !== null) { // Check if visible
+          btn.click();
+          console.log('Watch Mode: Clicked "Show more" button');
+        }
+      });
+
+      // Special check for the "Show more results" at the bottom of search
+      const bottomButton = Array.from(document.querySelectorAll('button')).find(b => b.textContent.includes('Show more results'));
+      if (bottomButton) bottomButton.click();
+
+      // Fallback: If page didn't move much, force it
+      await wait(1500);
+      window.scrollBy(0, 500);
+
+      // Randomish wait to allow content to load
+      await wait(1000 + Math.random() * 1000);
     }
 
     showOverlay('Analyzing and extracting leads...', 'info');
     await wait(1000);
 
-    // Extract
-    const result = extractLinkedInData(keywords, excludeKeywords);
-    const count = result.leads.length;
+    // Extract with error handling
+    let result;
+    let count = 0;
 
-    if (count > 0) {
-      showOverlay(`Found ${count} leads! Sending to Sheet...`, 'info');
-
-      // Send to background and WAIT for response
+    try {
+      result = extractLinkedInData(keywords, mandatoryKeywords, targetTitles || [], excludeKeywords);
+      count = result.leads.length;
+    } catch (extractError) {
+      console.error('Watch Mode: Extraction error', extractError);
+      showOverlay('Extraction error. Retrying soon...', 'error');
+      // Still notify background to continue the loop
       try {
-        const response = await chrome.runtime.sendMessage({
+        await chrome.runtime.sendMessage({
           type: 'WATCH_DATA_EXTRACTED',
-          data: result,
+          data: { leads: [], totalScanned: 0 },
           keywords: keywords
         });
+      } catch (e) { /* ignore */ }
+      return;
+    }
 
-        if (response && response.success) {
-          const newCount = response.newLeadsCount;
+    // ALWAYS notify background to continue the loop
+    try {
+      if (count > 0) {
+        showOverlay(`Found ${count} leads! Sending to Sheet...`, 'info');
+      }
+
+      const response = await chrome.runtime.sendMessage({
+        type: 'WATCH_DATA_EXTRACTED',
+        data: result,
+        keywords: keywords
+      });
+
+      if (count > 0) {
+        // Check if response was successful (treat undefined/missing as success for resilience)
+        if (!response || response.success !== false) {
+          const newCount = response?.newLeadsCount || 0;
           if (newCount > 0) {
-            showOverlay(`Successfully saved ${newCount} NEW leads to Google Sheet!`, 'success');
+            showOverlay(`Successfully saved ${newCount} NEW leads!`, 'success');
           } else {
-            showOverlay(`Found ${count} leads, but all were duplicates.`, 'error');
+            showOverlay(`Found ${count} leads (all duplicates). Next batch in 5s...`, 'info');
           }
         } else {
+          console.error('Watch Mode: Background returned error', response);
           showOverlay('Failed to save data. Check extension.', 'error');
         }
-      } catch (e) {
-        showOverlay('Connection error sending data.', 'error');
+      } else {
+        showOverlay('No new leads this batch. Continuing...', 'info');
       }
-    } else {
-      showOverlay('No matching leads found on this page.', 'error');
+    } catch (e) {
+      console.error('Watch Mode: Connection error', e);
+      showOverlay('Connection error. Retrying soon...', 'error');
     }
   }
 
