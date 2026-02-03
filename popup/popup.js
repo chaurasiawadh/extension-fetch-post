@@ -146,7 +146,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!leads || leads.length === 0) return;
 
         // CSV Headers
-        const headers = ['Name', 'Title', 'Profile URL', 'Post URL', 'Email', 'Job Link', 'Post Preview', 'Extracted At'];
+        const headers = ['Name', 'Title', 'Profile URL', 'Email', 'Job Link', 'Post Preview', 'Extracted At'];
 
         // Helper to escape CSV fields
         const escapeCsv = (field) => {
@@ -163,7 +163,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             escapeCsv(lead.name),
             escapeCsv(lead.title),
             escapeCsv(lead.profileUrl),
-            escapeCsv(lead.postUrl),
             escapeCsv(lead.email),
             escapeCsv(lead.jobLink),
             escapeCsv(lead.postPreview),
