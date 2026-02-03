@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "Linkdln Jobseekers",
-  "version": "1.0.1",
+  "name": "LinkedIn Jobseekers",
+  "version": "1.0.2",
   "description": "Extract LinkedIn hiring posts, manage leads, and generate AI-powered job application emails in one place.",
   "action": {
     "default_popup": "popup/popup.html",

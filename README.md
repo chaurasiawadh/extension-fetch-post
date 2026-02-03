@@ -1,6 +1,6 @@
-# Linkdln Jobseekers
+# LinkedIn Jobseekers
 
-Linkdln Jobseekers is a productivity-focused Chrome extension designed to help job seekers save time and apply smarter.
+LinkedIn Jobseekers is a productivity-focused Chrome extension designed to help job seekers save time and apply smarter.
 
 The extension allows users to extract hiring posts and recruiter details from LinkedIn Jobs and Posts, view and manage extracted leads in an interactive table, and generate personalized job application emails using AI based on the HR’s post content.
 
@@ -8,7 +8,7 @@ Users can review lead details, open recruiter profiles, access job links, and ge
 
 The extension supports data persistence, CSV export, and Gmail prefilled email sending to ensure full user control and privacy.
 
-Linkdln Jobseekers is ideal for developers, freshers, and professionals who want to streamline their job search and outreach process.
+LinkedIn Jobseekers is ideal for developers, freshers, and professionals who want to streamline their job search and outreach process.
 
 ## ✨ Features
 
