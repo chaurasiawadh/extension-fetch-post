@@ -1,15 +1,23 @@
-# LinkedIn Lead Extractor Chrome Extension
+# Linkdln Jobseekers
 
-A lightweight Chrome extension that extracts visible LinkedIn leads (name, title, email, post link) and sends them to Google Sheets via webhook for n8n-powered automated outreach.
+Linkdln Jobseekers is a productivity-focused Chrome extension designed to help job seekers save time and apply smarter.
+
+The extension allows users to extract hiring posts and recruiter details from LinkedIn Jobs and Posts, view and manage extracted leads in an interactive table, and generate personalized job application emails using AI based on the HR’s post content.
+
+Users can review lead details, open recruiter profiles, access job links, and generate ready-to-send email drafts, all from a clean and intuitive interface.
+
+The extension supports data persistence, CSV export, and Gmail prefilled email sending to ensure full user control and privacy.
+
+Linkdln Jobseekers is ideal for developers, freshers, and professionals who want to streamline their job search and outreach process.
 
 ## ✨ Features
 
-- **One-Click Extraction**: Extract all visible leads from LinkedIn search results or feed
-- **Keyword Filtering**: Only extract posts containing specific keywords (comma-separated)
-- **Google Sheets Integration**: Send data directly to your spreadsheet via webhook
-- **n8n Ready**: Connect with n8n for automated email outreach
-- **Human-in-the-Loop**: Manual search and scroll keeps you in control
-- **Modern UI**: Beautiful dark theme matching LinkedIn's aesthetic
+- **Lead Extraction**: Extract hiring posts and recruiter details from LinkedIn Jobs and Posts
+- **Lead Management**: View and manage extracted leads in an interactive table
+- **AI Email Generation**: Generate personalized job application emails using AI based on post content
+- **Actionable Insights**: Review lead details, open recruiter profiles, and access job links
+- **Privacy Focused**: Data persistence, CSV export, and Gmail prefilled email sending
+- **Clean Interface**: Intuitive design for a streamlined job search experience
 
 ## 🚀 Installation
 
@@ -21,99 +29,18 @@ A lightweight Chrome extension that extracts visible LinkedIn leads (name, title
 
 ## 📖 Usage
 
-### Step 1: Set Up Google Sheets Webhook
+### Step 1: Extract Leads
 
-**Option A: Using n8n**
-1. Create a new n8n workflow
-2. Add a **Webhook** trigger node (set to POST)
-3. Add a **Google Sheets** node to append rows
-4. Copy the webhook URL
-
-**Option B: Using Google Apps Script**
-1. Create a new Google Sheet with columns: Name, Title, Profile URL, Post URL, Email, Post Preview, Extracted At
-2. Go to Extensions > Apps Script
-3. Paste this code:
-
-```javascript
-function doPost(e) {
-  const sheet = SpreadsheetApp.getActiveSheet();
-  const data = JSON.parse(e.postData.contents);
-  
-  data.leads.forEach(lead => {
-    sheet.appendRow([
-      lead.name,
-      lead.title,
-      lead.profileUrl,
-      lead.postUrl,
-      lead.email,
-      lead.postPreview,
-      lead.extractedAt
-    ]);
-  });
-  
-  return ContentService.createTextOutput('OK');
-}
-```
-4. Deploy as Web App (Execute as: Me, Access: Anyone)
-5. Copy the deployment URL
-
-### Step 2: Configure Extension
-
-1. Click the extension icon in Chrome
-2. Paste your webhook URL
-3. (Optional) Add keyword filters like: `hiring, frontend, remote`
-4. Click **Save Settings**
-
-### Step 3: Extract Leads
-
-1. Go to LinkedIn and search for your target (e.g., "hiring frontend developer")
-2. **Scroll down** to load more results (the extension only extracts visible content)
+1. Go to LinkedIn and search for your target
+2. **Scroll down** to load more results
 3. Click the extension icon
-4. Click **Extract & Send Leads**
-5. Check your Google Sheet for the data!
+4. Use the interface to extract leads from visible posts
 
-## 📊 Data Schema
+### Step 2: Manage & Apply
 
-The extension sends this JSON structure to your webhook:
-
-```json
-{
-  "leads": [
-    {
-      "name": "John Doe",
-      "title": "Senior Frontend Developer at TechCorp",
-      "profileUrl": "https://linkedin.com/in/johndoe",
-      "postUrl": "https://linkedin.com/feed/update/...",
-      "email": "john@techcorp.com",
-      "postPreview": "We're hiring! Looking for...",
-      "extractedAt": "2024-12-14T01:30:00Z"
-    }
-  ],
-  "meta": {
-    "totalScanned": 50,
-    "totalExtracted": 15,
-    "keywords": ["hiring", "frontend"],
-    "searchUrl": "https://linkedin.com/search/...",
-    "timestamp": "2024-12-14T01:30:00Z"
-  }
-}
-```
-
-## 🔧 Keyword Filtering
-
-Keywords are matched with **OR** logic:
-- Input: `hiring, frontend, remote`
-- A post matches if it contains **ANY** of these keywords
-- Filtering is case-insensitive
-- Leave empty to extract all visible leads
-
-## ⚠️ Important Notes
-
-1. **Email Extraction**: LinkedIn rarely shows emails publicly. The extension extracts emails when visible in post content, but most leads will need email enrichment (Hunter.io, Apollo, etc.)
-
-2. **Rate Limiting**: Only extract manually and sparingly to avoid LinkedIn detection
-
-3. **LinkedIn ToS**: This tool is for personal productivity. Respect LinkedIn's terms of service.
+1. View extracted leads in the extension dashboard
+2. Use the **AI Email** feature to generate personalized outreach
+3. Export data to CSV or send emails via Gmail
 
 ## 🛠️ Development
 
@@ -128,11 +55,10 @@ linkedin-extension/
 │   ├── content.js       # Page extraction logic
 │   └── content.css      # Visual feedback styles
 ├── background/
-│   └── background.js    # Webhook handler
+│   └── background.js    # Background worker
 ├── icons/
-│   ├── icon16.png
-│   ├── icon48.png
-│   └── icon128.png
+│   ├── icon.svg         # Source icon
+│   └── generate-icons.html # Helper to generate PNGs
 └── README.md
 ```
 

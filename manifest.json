@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "LinkedIn Lead Extractor",
+  "name": "Linkdln Jobseekers",
   "version": "1.0.0",
-  "description": "Extract visible LinkedIn leads and send to Google Sheets via webhook",
+  "description": "Extract LinkedIn hiring posts, manage leads, and generate AI-powered job application emails in one place.",
   "action": {
     "default_popup": "popup/popup.html"
   },
