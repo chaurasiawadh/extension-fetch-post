@@ -140,6 +140,9 @@
   // ============================================================================
   // EXTRACTION LOGIC (Ported from popup.js)
   // ============================================================================
+  // ============================================================================
+  // EXTRACTION LOGIC (Ported from popup.js)
+  // ============================================================================
   function extractLinkedInData(keywords, mandatoryKeywords = [], targetTitles = [], excludeKeywords = []) {
     const leads = [];
     let totalScanned = 0;
@@ -205,151 +208,135 @@
       return email;
     }
 
-    // Selectors
-    // UPDATED: Added data-view-name strategies which are more stable
+    // UPDATED Selectors to favor data-view-name
     const postSelectors = [
-      // 2025/2026 Stable Selectors (Data Attributes)
       '[data-view-name="feed-full-update"]',
-      '[data-view-name="search-entity-result-universal-template"]',
-      '[data-view-name="job-card"]',
-
-      // Legacy/Fallback Classes
-      '.feed-shared-update-v2',
-      '.occludable-update',
-      '.reusable-search__result-container',
-      '.entity-result',
-      '[data-chameleon-result-urn]',
-
-      // Generic containers often used in search
-      'li.reusable-search__result-container',
-      'div.feed-shared-update-v2'
+      'div.feed-shared-update-v2',
+      'li.reusable-search__result-container'
     ];
 
     const elements = document.querySelectorAll(postSelectors.join(', '));
     console.log(`LLE DEBUG: Found ${elements.length} elements using selectors:`, postSelectors);
 
-
-
     elements.forEach((element) => {
       totalScanned++;
       try {
-        const profileLink = element.querySelector('a[href*="/in/"], a[href*="/company/"]');
-        const profileUrl = profileLink?.href?.split('?')[0] || '';
-
-        const nameElement = element.querySelector(
-          '.update-components-actor__name span[aria-hidden="true"], ' +
-          '.feed-shared-actor__name span[aria-hidden="true"], ' +
-          '.entity-result__title-text a span[aria-hidden="true"], ' +
-          '.app-aware-link span[aria-hidden="true"], ' +
-          '.update-components-actor__title span[aria-hidden="true"]'
-        );
-        const name = nameElement?.textContent?.trim() || '';
-
-        const titleElement = element.querySelector(
-          '.update-components-actor__description, .feed-shared-actor__description, ' +
-          '.entity-result__primary-subtitle, .update-components-actor__subtitle, .subline-level-1'
-        );
-        const title = titleElement?.textContent?.trim() || '';
-
-        // TARGET TITLE FILTER (New)
-        if (targetTitles && targetTitles.length > 0) {
-          if (!title) return; // If no title found, skip
-          const titleLower = title.toLowerCase();
-          const hasMatchingTitle = targetTitles.some(t => titleLower.includes(t.toLowerCase().trim()));
-          if (!hasMatchingTitle) return; // Skip if title doesn't match
-        }
-
-        // Content Extraction
-        let postContent = '';
-        const postContentSelectors = [
-          '.feed-shared-update-v2__description-wrapper', '.update-components-text__text-view',
-          '.feed-shared-text__text-view', '.feed-shared-update-v2__commentary',
-          '.update-components-update-v2__commentary',
-          '.feed-shared-inline-show-more-text span[dir="ltr"]', '.update-components-text span[dir="ltr"]',
-          '.feed-shared-text span[dir="ltr"]',
-          '[data-test-id="main-feed-activity-card__commentary"]', '.feed-shared-update-v2__description'
-        ];
-
-        for (const selector of postContentSelectors) {
-          const contentEl = element.querySelector(selector);
-          if (contentEl) {
-            const text = contentEl.textContent?.trim();
-            if (text && text.length > 50) {
-              postContent = text;
-              break;
-            }
-          }
-        }
-
-        if (!postContent || postContent.length < 50) {
-          const updateContainer = element.querySelector('.update-components-text, .feed-shared-update-v2__description');
-          if (updateContainer) postContent = updateContainer.textContent?.trim() || '';
-        }
-
-        // Post URL Detection (Refined - Multiple strategies)
+        // --- 1. POST URL (Robust via Tracking Scope) ---
         let postUrl = '';
 
-        // Strategy 1: Direct link selectors
-        const postLinkSelectors = [
-          'a[href*="/feed/update/"]',
-          'a[href*="/posts/"]',
-          '.update-components-actor__sub-description a[href*="/feed/update/"]',
-          '.feed-shared-actor__sub-description a[href*="/feed/update/"]',
-          'a.app-aware-link[href*="/feed/update/"]',
-          'a.app-aware-link[href*="/posts/"]',
-          // Time/Age links often contain post URLs
-          '.update-components-actor__sub-description-link',
-          '.feed-shared-actor__sub-description a',
-          'a.update-components-actor__meta-link'
-        ];
-
-        for (const sel of postLinkSelectors) {
-          const link = element.querySelector(sel);
-          if (link?.href && (link.href.includes('/feed/update/') || link.href.includes('/posts/'))) {
-            postUrl = link.href.split('?')[0];
-            break;
-          }
-        }
-
-        // Strategy 2: Look for any link containing urn:li:activity (LinkedIn post ID)
-        if (!postUrl) {
-          const allLinks = element.querySelectorAll('a');
-          for (const link of allLinks) {
-            const href = link.href || '';
-            if (href.includes('/feed/update/urn:li:') || href.includes('/posts/')) {
-              postUrl = href.split('?')[0];
-              break;
+        // Try parsing data-view-tracking-scope
+        // It often looks like: [{"... updateUrn":"urn:li:activity:742... " ...}]
+        const trackingDiv = element.closest('[data-view-tracking-scope]') || element.querySelector('[data-view-tracking-scope]');
+        if (trackingDiv) {
+          const trackingAttr = trackingDiv.getAttribute('data-view-tracking-scope');
+          if (trackingAttr) {
+            try {
+              // Sometimes it is URI encoded, but usually just JSON string
+              // We look for the pattern "updateUrn":"urn:li:activity:..."
+              const match = trackingAttr.match(/urn:li:activity:(\d+)/);
+              if (match && match[1]) {
+                postUrl = `https://www.linkedin.com/feed/update/urn:li:activity:${match[1]}/`;
+              }
+            } catch (e) {
+              // ignore parse error
             }
           }
         }
 
-        // Strategy 3: Check data attributes for urn
+        // Fallback strategies for Post URL
         if (!postUrl) {
-          const urn = element.getAttribute('data-urn') || element.getAttribute('data-id');
-          if (urn && urn.includes('urn:li:activity:')) {
-            postUrl = `https://www.linkedin.com/feed/update/${urn}`;
+          const link = element.querySelector('a[href*="/feed/update/"], a[href*="/posts/"]');
+          if (link) postUrl = link.href.split('?')[0];
+        }
+
+        // --- 2. ACTOR DETAILS (Name, Title, Profile URL) ---
+        let name = '';
+        let title = '';
+        let profileUrl = '';
+
+        // Locate the actor image container, which is usually a stable anchor
+        const actorImageLink = element.querySelector('a[data-view-name="feed-actor-image"]');
+
+        if (actorImageLink) {
+          profileUrl = actorImageLink.href.split('?')[0];
+
+          // The actor text details are usually in the NEXT sibling or close by
+          // Structure:
+          // <a data-view-name="feed-actor-image">...</a>
+          // <div ...> 
+          //    <a ...> <span ...>NAME</span> </a>
+          //    <span ...>TITLE</span>
+          // </div>
+
+          // Start searching from the parent's next elements or siblings
+          const container = actorImageLink.parentElement;
+          // Sometimes the text is in a sibling <div>
+          const textContainer = container.querySelector('[data-view-name="feed-actor-name"]')
+            || element.querySelector('.update-components-actor__meta')
+            || element.querySelector('.feed-shared-actor__meta');
+
+          if (textContainer || (actorImageLink.nextElementSibling)) {
+            const targetDiv = textContainer || actorImageLink.nextElementSibling;
+
+            // Name is usually the first strong text
+            const nameEl = targetDiv.querySelector('span[aria-hidden="true"]');
+            if (nameEl) name = nameEl.textContent.trim();
+
+            // Title is usually in the secondary text
+            const titleEl = targetDiv.querySelector('.update-components-actor__description span[aria-hidden="true"], .feed-shared-actor__description span[aria-hidden="true"]');
+            if (titleEl) title = titleEl.textContent.trim();
+
+            // Fallback: iterate p tags if specific classes fail (common in search results)
+            if (!name) {
+              const pTags = targetDiv.querySelectorAll('p, span[dir="ltr"]');
+              if (pTags.length >= 1) name = pTags[0].textContent.trim().split('•')[0].trim();
+              if (pTags.length >= 2) title = pTags[1].textContent.trim();
+            }
           }
+        }
+
+        // --- 3. COMPANY / JOB DETAILS ---
+        let company = '';
+        // If there is a job card attached
+        const jobCard = element.querySelector('[data-view-name="feed-job-card-entity"], .job-card-container');
+        if (jobCard) {
+          // Company is usually the second line in job card
+          const jobTexts = jobCard.innerText.split('\n');
+          if (jobTexts.length >= 2) {
+            // Often: Job Title \n Company Name \n Location
+            // But we should look for the company logo alt or specific class if possible
+            const companyImg = jobCard.querySelector('img');
+            if (companyImg && companyImg.alt) company = companyImg.alt;
+          }
+        }
+
+
+        // TARGET TITLE FILTER
+        if (targetTitles && targetTitles.length > 0) {
+          // Check both actor title and potential job title
+          const titleTextToCheck = (title + ' ' + (company || '')).toLowerCase();
+          if (!titleTextToCheck) return;
+          const hasMatchingTitle = targetTitles.some(t => titleTextToCheck.includes(t.toLowerCase().trim()));
+          if (!hasMatchingTitle) return;
+        }
+
+        // --- 4. CONTENT & EMAILS ---
+        let postContent = '';
+        const contentEl = element.querySelector('.feed-shared-update-v2__description-wrapper, .update-components-text, [data-view-name="feed-commentary"]');
+        if (contentEl) {
+          // Get full text including "see more" if expanded, though 'innerText' usually captures visible
+          // We want hidden text too if logical, but 'textContent' allows that.
+          postContent = contentEl.textContent.trim();
         }
 
         // Email Search
-        const fullText = element.textContent || '';
-        const seeMoreContent = element.querySelector('.feed-shared-inline-show-more-text');
-        const expandedText = seeMoreContent?.textContent || '';
-
+        const fullText = (element.innerText || '') + ' ' + postContent;
         let mailtoEmails = '';
         element.querySelectorAll('a[href^="mailto:"]').forEach(link => {
-          const href = link.getAttribute('href');
-          if (href) mailtoEmails += ' ' + href.replace('mailto:', '').split('?')[0];
-          mailtoEmails += ' ' + (link.textContent || '');
+          mailtoEmails += ' ' + link.href.replace('mailto:', '').split('?')[0];
         });
 
-        let linkEmails = '';
-        element.querySelectorAll('a').forEach(link => {
-          const linkText = link.textContent || '';
-          if (linkText.includes('@')) linkEmails += ' ' + linkText;
-        });
-
-        const allTextToSearch = fullText + ' ' + expandedText + ' ' + postContent + ' ' + mailtoEmails + ' ' + linkEmails;
+        const allTextToSearch = fullText + ' ' + mailtoEmails;
         const emailMatches = allTextToSearch.match(emailRegex);
 
         let email = '';
@@ -363,118 +350,55 @@
           }
         }
 
-        // Job Link Search (Refined)
+        // --- 5. JOB/APPLY LINK ---
         let jobLink = '';
-        // 1. Look for 'View job' buttons or links
-        const viewJobLink = element.querySelector('a[href*="/jobs/view/"], a.feed-shared-update-v2__job-content-link');
+        const viewJobLink = element.querySelector('a[href*="/jobs/view/"], [data-view-name="feed-job-card-entity"] a');
         if (viewJobLink) {
           jobLink = viewJobLink.href.split('?')[0];
-        }
-
-        // 2. Look for external links that might be job applications
-        if (!jobLink) {
+        } else {
+          // Look for probable external job links
           const links = element.querySelectorAll('a');
           for (const link of links) {
             const href = link.href.toLowerCase();
-            const text = link.textContent?.toLowerCase() || '';
-
-            // Skip common non-job links
-            if (href.includes('mailto:') ||
-              href.includes('linkedin.com/in/') ||
-              href.includes('linkedin.com/company/') ||
-              href.includes('hashtag') ||
-              href.includes('search/results') ||
-              href.includes('whatsapp.com/channel') ||
-              href === '#' || href === '') continue;
-
-            if (href.includes('job') || href.includes('apply') || href.includes('career') ||
-              text.includes('apply') || text.includes('job') || text.includes('hiring') ||
-              text.includes('google.com/forms') || text.includes('typeform.com')) {
+            if (href.includes('forms.gle') || href.includes('typeform') || href.includes('lever.co') || href.includes('greenhouse.io')) {
               jobLink = link.href;
               break;
             }
           }
         }
 
-        // Filtering logic - uses postContent for better accuracy
-        const searchTarget = (postContent + ' ' + title + ' ' + name).toLowerCase();
+        // --- FILTERS ---
+        const searchTarget = (postContent + ' ' + title + ' ' + name + ' ' + company).toLowerCase();
 
-        // Exclude Keywords Filter (HIGHEST PRIORITY) - EXACT TERM MATCHING
+        // Exclude
         if (excludeKeywords && excludeKeywords.length > 0) {
-          const hasExcludeKeyword = excludeKeywords.some(keyword => {
-            try {
-              const term = keyword.trim().toLowerCase();
-              if (!term || term.length === 0) return false;
-
-              // Exact term matching - keyword must be standalone, not part of a larger word
-              // e.g., "JAVA" should NOT match "JavaScript", but SHOULD match "JAVA developer"
-              let pos = 0;
-              while ((pos = searchTarget.indexOf(term, pos)) !== -1) {
-                const charBefore = pos > 0 ? searchTarget[pos - 1] : '';
-                const charAfter = pos + term.length < searchTarget.length
-                  ? searchTarget[pos + term.length]
-                  : '';
-
-                // Check if term boundaries are valid
-                const termStartsAlphaNum = /[a-z0-9]/i.test(term.charAt(0));
-                const termEndsAlphaNum = /[a-z0-9]/i.test(term.charAt(term.length - 1));
-                const beforeIsAlphaNum = charBefore ? /[a-z0-9]/i.test(charBefore) : false;
-                const afterIsAlphaNum = charAfter ? /[a-z0-9]/i.test(charAfter) : false;
-
-                // If term starts with alphanumeric, char before must NOT be alphanumeric
-                // If term ends with alphanumeric, char after must NOT be alphanumeric
-                const startOk = !termStartsAlphaNum || !beforeIsAlphaNum;
-                const endOk = !termEndsAlphaNum || !afterIsAlphaNum;
-
-                if (startOk && endOk) {
-                  return true; // Found exact match
-                }
-
-                pos++;
-              }
-              return false;
-            } catch (e) {
-              console.error('Error checking exclude keyword:', keyword, e);
-              return false;
-            }
-          });
-          if (hasExcludeKeyword) return;
+          const hasExclude = excludeKeywords.some(kw => searchTarget.includes(kw.toLowerCase().trim()));
+          if (hasExclude) return;
         }
 
-        // Positive Keywords Filter (OR Logic)
+        // Positive
         if (keywords && keywords.length > 0) {
-          const hasKeyword = keywords.some(keyword => {
-            return searchTarget.includes(keyword.toLowerCase().trim());
-          });
+          const hasKeyword = keywords.some(kw => searchTarget.includes(kw.toLowerCase().trim()));
           if (!hasKeyword) return;
         }
 
-        // Mandatory Keywords Filter (AND Logic)
+        // Mandatory
         if (mandatoryKeywords && mandatoryKeywords.length > 0) {
-          const hasAllMandatory = mandatoryKeywords.every(keyword => {
-            return searchTarget.includes(keyword.toLowerCase().trim());
-          });
-          if (!hasAllMandatory) return;
+          const hasAll = mandatoryKeywords.every(kw => searchTarget.includes(kw.toLowerCase().trim()));
+          if (!hasAll) return;
         }
 
-        // Add Lead
+        // Add matched lead
         if (name || title || email || jobLink) {
-          let preview = postContent;
-          if (!preview || preview.length < 50) {
-            let tempText = fullText;
-            if (name && tempText.startsWith(name)) tempText = tempText.substring(name.length).trim();
-            if (title && tempText.startsWith(title)) tempText = tempText.substring(title.length).trim();
-            preview = tempText;
-          }
-          preview = preview.replace(/\s+/g, ' ').replace(/^[•·\-\s]+/, '').trim();
-
+          const preview = postContent.replace(/\s+/g, ' ').substring(0, 500);
           leads.push({
-            name, title, profileUrl, postUrl, email, jobLink,
-            postPreview: preview.substring(0, 500),
+            name, title, company, profileUrl, postUrl, email, jobLink,
+            postPreview: preview,
             extractedAt: new Date().toISOString(),
             matchedKeywords: keywords ? keywords.filter(kw => searchTarget.includes(kw.toLowerCase().trim())) : []
           });
         }
+
       } catch (err) {
         console.error('Error extracting lead:', err);
       }
