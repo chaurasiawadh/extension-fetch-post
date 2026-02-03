@@ -83,11 +83,19 @@
                         <polyline points="7 10 12 15 17 10" />
                         <line x1="12" y1="15" x2="12" y2="3" />
                     </svg>
-                    <span>Extract & Download CSV</span>
+                    <span>Extract Leads</span>
                 </button>
             </div>
 
             <div class="action-row secondary">
+                <button id="viewDataBtn" class="btn-secondary hidden" style="margin-right: auto;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                    <span>View Data</span>
+                </button>
+
                 <button id="clearHistoryBtn" class="btn-danger">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polyline points="3 6 5 6 21 6" />
@@ -101,6 +109,43 @@
         <!-- Footer Info -->
         <div class="footer-info">
             <span id="historyCount" class="history-count"></span>
+        </div>
+
+        <!-- Data Preview Modal -->
+        <div id="dataModal" class="modal hidden">
+            <div class="modal-overlay"></div>
+            <div class="modal-container">
+                <header class="modal-header">
+                    <h2>Extracted Leads</h2>
+                    <div class="modal-actions-header">
+                        <button id="downloadCsvBtn" class="btn-primary small">
+                            <span>Download CSV</span>
+                        </button>
+                        <button id="closeModalBtn" class="close-btn">&times;</button>
+                    </div>
+                </header>
+                <div class="modal-body">
+                    <div class="table-wrapper">
+                        <table id="leadsTable">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Title</th>
+                                    <th>Profile URL</th>
+                                    <th>Email</th>
+                                    <th>Job Link</th>
+                                    <th>Post Preview</th>
+                                    <th>Extracted At</th>
+                                    <th>Send</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Rows injected here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 

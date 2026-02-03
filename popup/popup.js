@@ -13,12 +13,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     const totalFoundEl = document.getElementById('totalFound');
     const totalNewEl = document.getElementById('totalNew');
 
+    // Modal Elements
+    const viewDataBtn = document.getElementById('viewDataBtn');
+    const dataModal = document.getElementById('dataModal');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    const leadsTableBody = document.querySelector('#leadsTable tbody');
+    const modalOverlay = document.querySelector('.modal-overlay');
+
     // State
     let extractedEmails = new Set();
     let isExtracting = false;
+    let currentLeads = []; // Store leads for preview
 
     // Initialize
     extractedEmails = await loadExtractedHistory();
+    currentLeads = await loadExtractedLeads(); // Load full lead objects
+
+    if (currentLeads.length > 0) {
+        if (viewDataBtn) viewDataBtn.classList.remove('hidden');
+        showStatus('success', `Loaded ${currentLeads.length} saved leads`);
+    }
+
     updateHistoryCount();
 
     // Load saved scroll count
@@ -28,8 +43,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Event Listeners
-    extractBtn.addEventListener('click', extractAndDownload);
+    extractBtn.addEventListener('click', extractLeads);
     clearHistoryBtn.addEventListener('click', clearHistory);
+
+    // Modal Listeners
+    if (viewDataBtn) {
+        viewDataBtn.addEventListener('click', () => openModal());
+    }
+    if (closeModalBtn) closeModalBtn.addEventListener('click', closeModal);
+    if (modalOverlay) modalOverlay.addEventListener('click', closeModal);
 
     // Save scroll count on change
     scrollCountInput.addEventListener('change', async () => {
@@ -39,7 +61,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ===================================
     // MAIN EXTRACTION FLOW
     // ===================================
-    async function extractAndDownload() {
+    async function extractLeads() {
         if (isExtracting) return;
 
         const scrollCount = Math.max(0, parseInt(scrollCountInput.value) || 0);
@@ -48,6 +70,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         isExtracting = true;
         extractBtn.disabled = true;
         extractBtn.innerHTML = `<span>Extracting...</span>`;
+        if (viewDataBtn) viewDataBtn.classList.add('hidden'); // Hide view button during new extraction
         showStatus('loading', '⟳ Scrolling & Extracting...');
 
         try {
@@ -74,7 +97,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             const { result } = response;
-            processAndDownload(result);
+            processLeads(result);
 
         } catch (error) {
             // Check for connection errors first
@@ -92,7 +115,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    async function processAndDownload(data) {
+    async function processLeads(data) {
         let leads = data.leads || [];
         const totalFound = leads.length;
 
@@ -114,8 +137,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         const newCount = leads.length;
         const duplicates = beforeCount - newCount;
 
-        // Update Stats
+        // Update Stats & Global State
         updateStats(totalFound, newCount);
+
+        // Append new leads to history
+        currentLeads = [...currentLeads, ...leads];
+        await saveExtractedLeads(currentLeads);
 
         if (newCount === 0) {
             if (duplicates > 0) {
@@ -132,11 +159,102 @@ document.addEventListener('DOMContentLoaded', async () => {
         extractedEmails = await saveExtractedHistory(newHistoryItems);
         updateHistoryCount();
 
-        // Download CSV
-        downloadLeadsCsv(leads);
+        // Enable "View Data" button
+        if (viewDataBtn) viewDataBtn.classList.remove('hidden');
 
-        showStatus('success', `✓ Downloaded ${newCount} new leads!`);
+        showStatus('success', `✓ Extracted ${newCount} new leads!`);
         resetButton();
+
+        // Auto-open modal to show results
+        openModal();
+    }
+
+    // ===================================
+    // DATA PREVIEW MODAL
+    // ===================================
+    function openModal() {
+        // Always open modal, even if empty
+        document.body.classList.add('expanded');
+        renderTable(currentLeads || []);
+        dataModal.classList.remove('hidden');
+    }
+
+    function closeModal() {
+        dataModal.classList.add('hidden');
+        document.body.classList.remove('expanded');
+    }
+
+    function renderTable(leads) {
+        leadsTableBody.innerHTML = '';
+
+        if (!leads || leads.length === 0) {
+            const row = document.createElement('tr');
+            row.innerHTML = `<td colspan="8" style="text-align: center; padding: 24px; color: #888;">No data extracted yet</td>`;
+            leadsTableBody.appendChild(row);
+            return;
+        }
+
+        leads.forEach(lead => {
+            const row = document.createElement('tr');
+
+            // 1. Name
+            const nameCell = document.createElement('td');
+            nameCell.textContent = lead.name || 'Unknown';
+            row.appendChild(nameCell);
+
+            // 2. Title
+            const titleCell = document.createElement('td');
+            titleCell.textContent = lead.title || 'N/A';
+            row.appendChild(titleCell);
+
+            // 3. Profile URL
+            const profileCell = document.createElement('td');
+            if (lead.profileUrl) {
+                profileCell.innerHTML = `<a href="${lead.profileUrl}" target="_blank" class="lead-link">Link ↗</a>`;
+            } else {
+                profileCell.textContent = '-';
+            }
+            row.appendChild(profileCell);
+
+            // 4. Email
+            const emailCell = document.createElement('td');
+            emailCell.textContent = lead.email || '-';
+            row.appendChild(emailCell);
+
+            // 5. Job Link
+            const jobCell = document.createElement('td');
+            if (lead.jobLink) {
+                jobCell.innerHTML = `<a href="${lead.jobLink}" target="_blank" class="lead-link">Post ↗</a>`;
+            } else {
+                jobCell.textContent = '-';
+            }
+            row.appendChild(jobCell);
+
+            // 6. Post Preview (Truncated)
+            const postCell = document.createElement('td');
+            // Remove newlines and truncate for cleaner display
+            const rawPost = (lead.postPreview || '-').replace(/\n/g, ' ').substring(0, 100);
+            postCell.textContent = rawPost;
+            postCell.title = lead.postPreview || ''; // Full text in native tooltip too
+            row.appendChild(postCell);
+
+            // 7. Extracted At
+            const timeCell = document.createElement('td');
+            timeCell.textContent = lead.extractedAt || new Date().toLocaleTimeString();
+            row.appendChild(timeCell);
+
+            // 8. Send Button
+            const actionCell = document.createElement('td');
+            actionCell.style.textAlign = 'center';
+            const sendBtn = document.createElement('button');
+            sendBtn.className = 'btn-send';
+            sendBtn.textContent = 'Send';
+            sendBtn.onclick = () => alert(`Action triggered for ${lead.name}\n(Email: ${lead.email || 'N/A'})`);
+            actionCell.appendChild(sendBtn);
+            row.appendChild(actionCell);
+
+            leadsTableBody.appendChild(row);
+        });
     }
 
     // ===================================
@@ -213,10 +331,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     async function clearHistory() {
-        await chrome.storage.local.remove([`extracted_history_simple`]);
+        await chrome.storage.local.remove([`extracted_history_simple`, 'leads_data_full']);
         extractedEmails = new Set();
         updateHistoryCount();
         updateStats(0, 0);
+        currentLeads = [];
+        if (viewDataBtn) viewDataBtn.classList.add('hidden');
         showStatus('success', 'History cleared');
     }
 
@@ -234,6 +354,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         totalNewEl.textContent = newLeads;
     }
 
+    // Lead Persistence Helpers
+    async function loadExtractedLeads() {
+        const key = 'leads_data_full';
+        const res = await chrome.storage.local.get([key]);
+        return res[key] || [];
+    }
+
+    async function saveExtractedLeads(leads) {
+        const key = 'leads_data_full';
+        await chrome.storage.local.set({ [key]: leads });
+    }
+
     function resetButton() {
         isExtracting = false;
         extractBtn.disabled = false;
@@ -243,6 +375,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <polyline points="7 10 12 15 17 10" />
                 <line x1="12" y1="15" x2="12" y2="3" />
             </svg>
-            <span>Extract & Download CSV</span>`;
+            <span>Extract Leads</span>`;
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 });
