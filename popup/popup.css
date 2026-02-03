@@ -995,8 +995,9 @@ body.expanded {
     border-bottom: none;
 }
 
-#leadsTable tr:hover td {
-    background: rgba(255, 255, 255, 0.02);
+#leadsTable tbody tr {
+    cursor: pointer;
+    transition: var(--transition);
 }
 
 /* Modal Header Actions */
@@ -1125,4 +1126,135 @@ body.expanded {
 .btn-send:hover {
     background: var(--accent-primary);
     transform: translateY(-1px);
+}
+
+/* Lead Details Modal Styles */
+.details-container {
+    max-width: 600px;
+    width: 90%;
+    max-height: 90vh;
+    height: auto;
+}
+
+.details-body {
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.details-grid {
+    display: grid;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.detail-row {
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    gap: 12px;
+    align-items: start;
+}
+
+.detail-row .label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.detail-row .value {
+    font-size: 13px;
+    color: var(--text-primary);
+    word-break: break-word;
+}
+
+.detail-row .value a {
+    color: var(--accent-secondary);
+    text-decoration: none;
+}
+
+.detail-row .value a:hover {
+    text-decoration: underline;
+}
+
+.post-preview-section {
+    margin-bottom: 20px;
+    padding: 16px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+}
+
+.post-preview-section .label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.post-content {
+    font-size: 13px;
+    color: var(--text-primary);
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.email-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.email-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.email-header h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.btn-secondary.small {
+    padding: 6px 12px;
+    font-size: 11px;
+    height: 32px;
+    width: auto;
+}
+
+.email-textarea {
+    width: 100%;
+    min-height: 200px;
+    padding: 12px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-size: 13px;
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+    line-height: 1.6;
+    resize: vertical;
+    transition: var(--transition);
+}
+
+.email-textarea:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px rgba(0, 119, 181, 0.2);
+}
+
+.email-textarea::placeholder {
+    color: var(--text-muted);
+}
+
+.modal-footer {
+    padding: 16px 20px;
+    border-top: 1px solid var(--border-color);
+    background: var(--bg-tertiary);
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
 }

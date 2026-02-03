@@ -136,7 +136,6 @@
                                     <th>Job Link</th>
                                     <th>Post Preview</th>
                                     <th>Extracted At</th>
-                                    <th>Send</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -145,6 +144,71 @@
                         </table>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Lead Details Modal -->
+        <div id="leadDetailsModal" class="modal hidden">
+            <div class="modal-overlay"></div>
+            <div class="modal-container details-container">
+                <header class="modal-header">
+                    <h2>Lead Details</h2>
+                    <button id="closeDetailsBtn" class="close-btn">&times;</button>
+                </header>
+                <div class="modal-body details-body">
+                    <div class="details-grid">
+                        <div class="detail-row">
+                            <span class="label">Name:</span>
+                            <span class="value" id="detailName"></span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="label">Title:</span>
+                            <span class="value" id="detailTitle"></span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="label">Email:</span>
+                            <span class="value" id="detailEmail"></span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="label">Profile:</span>
+                            <span class="value" id="detailProfile"></span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="label">Job Link:</span>
+                            <span class="value" id="detailJob"></span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="label">Extracted:</span>
+                            <span class="value" id="detailDate"></span>
+                        </div>
+                    </div>
+
+                    <div class="post-preview-section">
+                        <span class="label">Full Post Description:</span>
+                        <div class="post-content" id="detailPost"></div>
+                    </div>
+
+                    <div class="email-section">
+                        <div class="email-header">
+                            <h3>Email Draft</h3>
+                            <button id="aiWriteBtn" class="btn-secondary small">
+                                ✨ Write Email with AI
+                            </button>
+                        </div>
+                        <textarea id="emailDraft" class="email-textarea"
+                            placeholder="Generate an email or start typing..."></textarea>
+                    </div>
+                </div>
+                <footer class="modal-footer">
+                    <button id="sendEmailBtn" class="btn-primary">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="22" y1="2" x2="11" y2="13"></line>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                        </svg>
+                        <span>Send Email</span>
+                    </button>
+                </footer>
             </div>
         </div>
     </div>

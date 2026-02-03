@@ -19,6 +19,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     const closeModalBtn = document.getElementById('closeModalBtn');
     const leadsTableBody = document.querySelector('#leadsTable tbody');
     const modalOverlay = document.querySelector('.modal-overlay');
+    const downloadCsvBtn = document.getElementById('downloadCsvBtn');
+
+    // Lead Details Modal Elements
+    const leadDetailsModal = document.getElementById('leadDetailsModal');
+    const closeDetailsBtn = document.getElementById('closeDetailsBtn');
+    const aiWriteBtn = document.getElementById('aiWriteBtn');
+    const sendEmailBtn = document.getElementById('sendEmailBtn');
+    const emailDraft = document.getElementById('emailDraft');
+
+    let currentSelectedLead = null; // Store currently selected lead
 
     // State
     let extractedEmails = new Set();
@@ -52,6 +62,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     if (closeModalBtn) closeModalBtn.addEventListener('click', closeModal);
     if (modalOverlay) modalOverlay.addEventListener('click', closeModal);
+    if (downloadCsvBtn) downloadCsvBtn.addEventListener('click', () => downloadLeadsCsv(currentLeads));
+
+    // Lead Details Modal Listeners
+    if (closeDetailsBtn) closeDetailsBtn.addEventListener('click', closeLeadDetails);
+    if (aiWriteBtn) aiWriteBtn.addEventListener('click', () => generateEmail(currentSelectedLead));
+    if (sendEmailBtn) sendEmailBtn.addEventListener('click', () => sendEmail(currentSelectedLead));
 
     // Save scroll count on change
     scrollCountInput.addEventListener('change', async () => {
@@ -189,7 +205,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (!leads || leads.length === 0) {
             const row = document.createElement('tr');
-            row.innerHTML = `<td colspan="8" style="text-align: center; padding: 24px; color: #888;">No data extracted yet</td>`;
+            row.innerHTML = `<td colspan="7" style="text-align: center; padding: 24px; color: #888;">No data extracted yet</td>`;
             leadsTableBody.appendChild(row);
             return;
         }
@@ -232,26 +248,24 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // 6. Post Preview (Truncated)
             const postCell = document.createElement('td');
-            // Remove newlines and truncate for cleaner display
             const rawPost = (lead.postPreview || '-').replace(/\n/g, ' ').substring(0, 100);
             postCell.textContent = rawPost;
-            postCell.title = lead.postPreview || ''; // Full text in native tooltip too
+            postCell.title = lead.postPreview || '';
             row.appendChild(postCell);
 
             // 7. Extracted At
             const timeCell = document.createElement('td');
-            timeCell.textContent = lead.extractedAt || new Date().toLocaleTimeString();
+            timeCell.textContent = formatDate(lead.extractedAt);
             row.appendChild(timeCell);
 
-            // 8. Send Button
-            const actionCell = document.createElement('td');
-            actionCell.style.textAlign = 'center';
-            const sendBtn = document.createElement('button');
-            sendBtn.className = 'btn-send';
-            sendBtn.textContent = 'Send';
-            sendBtn.onclick = () => alert(`Action triggered for ${lead.name}\n(Email: ${lead.email || 'N/A'})`);
-            actionCell.appendChild(sendBtn);
-            row.appendChild(actionCell);
+            // Make row clickable to open details
+            row.addEventListener('click', (e) => {
+                // Don't open details if clicking on a link
+                if (e.target.tagName === 'A' || e.target.closest('a')) {
+                    return;
+                }
+                openLeadDetails(lead);
+            });
 
             leadsTableBody.appendChild(row);
         });
@@ -383,4 +397,122 @@ document.addEventListener('DOMContentLoaded', async () => {
         div.textContent = text;
         return div.innerHTML;
     }
+
+    // Format date to "02 Feb, 2026 11:30AM" format
+    function formatDate(dateString) {
+        if (!dateString) return new Date().toLocaleString();
+
+        const date = new Date(dateString);
+
+        // Format: "02 Feb, 2026 11:30AM"
+        const day = String(date.getDate()).padStart(2, '0');
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const month = months[date.getMonth()];
+        const year = date.getFullYear();
+
+        let hours = date.getHours();
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        hours = hours ? hours : 12; // 0 should be 12
+
+        return `${day} ${month}, ${year} ${hours}:${minutes}${ampm}`;
+    }
+
+    // ===================================
+    // LEAD DETAILS MODAL
+    // ===================================
+    function openLeadDetails(lead) {
+        currentSelectedLead = lead;
+
+        // Populate details
+        document.getElementById('detailName').textContent = lead.name || 'Unknown';
+        document.getElementById('detailTitle').textContent = lead.title || 'N/A';
+        document.getElementById('detailEmail').textContent = lead.email || 'N/A';
+
+        // Profile link
+        const profileEl = document.getElementById('detailProfile');
+        if (lead.profileUrl) {
+            profileEl.innerHTML = `<a href="${lead.profileUrl}" target="_blank">View Profile ↗</a>`;
+        } else {
+            profileEl.textContent = 'N/A';
+        }
+
+        // Job link
+        const jobEl = document.getElementById('detailJob');
+        if (lead.jobLink) {
+            jobEl.innerHTML = `<a href="${lead.jobLink}" target="_blank">View Post ↗</a>`;
+        } else {
+            jobEl.textContent = 'N/A';
+        }
+
+        document.getElementById('detailDate').textContent = formatDate(lead.extractedAt);
+        document.getElementById('detailPost').textContent = lead.postPreview || 'No post description available';
+
+        // Clear email draft
+        emailDraft.value = '';
+
+        // Show modal
+        leadDetailsModal.classList.remove('hidden');
+    }
+
+    function closeLeadDetails() {
+        leadDetailsModal.classList.add('hidden');
+        currentSelectedLead = null;
+    }
+
+    function generateEmail(lead) {
+        if (!lead) return;
+
+        const name = lead.name || 'Hiring Manager';
+        const title = lead.title || 'your team';
+        const postDescription = lead.postPreview || '';
+
+        // Extract key requirements from post (simple keyword extraction)
+        let requirements = '';
+        if (postDescription) {
+            const keywords = ['experience', 'skills', 'requirements', 'looking for', 'seeking'];
+            const lines = postDescription.split('\n');
+            const relevantLines = lines.filter(line =>
+                keywords.some(keyword => line.toLowerCase().includes(keyword))
+            );
+            if (relevantLines.length > 0) {
+                requirements = relevantLines.slice(0, 2).join(' ');
+            }
+        }
+
+        // Generate professional email
+        const email = `Dear ${name},
+
+I hope this message finds you well. I came across your recent post regarding ${title}, and I am very interested in exploring this opportunity further.
+
+${requirements ? `I noticed you mentioned: "${requirements.substring(0, 150)}..." I believe my background aligns well with these requirements.` : 'I believe my skills and experience would be a great fit for this role.'}
+
+I would love to discuss how I can contribute to your team. I have attached my resume for your review and would be happy to schedule a call at your convenience.
+
+Thank you for considering my application. I look forward to hearing from you.
+
+Best regards,
+[Your Name]
+[Your Contact Information]`;
+
+        emailDraft.value = email;
+    }
+
+    function sendEmail(lead) {
+        if (!lead) return;
+
+        const to = lead.email || '';
+        const subject = encodeURIComponent(`Application for ${lead.title || 'Position'}`);
+        const body = encodeURIComponent(emailDraft.value || 'Hello,\n\n');
+
+        if (!to) {
+            alert('No email address available for this lead.');
+            return;
+        }
+
+        const mailtoLink = `mailto:${to}?subject=${subject}&body=${body}`;
+        window.open(mailtoLink, '_blank');
+    }
 });
+
