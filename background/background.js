@@ -73,15 +73,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 // Fallback Alarm Listener
-chrome.alarms.onAlarm.addListener((alarm) => {
-    // Alarm name format: watchModeAlarm_12345
-    if (alarm.name.startsWith('watchModeAlarm_')) {
-        const tabId = parseInt(alarm.name.split('_')[1]);
-        if (!isNaN(tabId)) {
-            executeWatchReload(tabId);
-        }
-    }
-});
+// Fallback Alarm Listener Removed
 
 // ===================================
 // MULTI-TAB SESSION STATE
@@ -149,7 +141,7 @@ async function stopWatchMode(tabId) {
     if (watchSessions[tabId]) {
         delete watchSessions[tabId];
         await chrome.storage.local.set({ watchSessions });
-        await chrome.alarms.clear(`watchModeAlarm_${tabId}`);
+        // await chrome.alarms.clear(`watchModeAlarm_${tabId}`);
         updateBadge(tabId, false);
     }
 }
@@ -203,8 +195,8 @@ async function checkAndTriggerWatch(tabId, url) {
             scrollCount: session.scrollCount
         });
 
-        // Safety Fallback Alarm (unique per tab)
-        chrome.alarms.create(`watchModeAlarm_${tabId}`, { delayInMinutes: 70 });
+        // Safety Fallback Alarm Removed
+        // chrome.alarms.create(`watchModeAlarm_${tabId}`, { delayInMinutes: 70 });
     }
 }
 
