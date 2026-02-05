@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "LinkedIn Jobseekers",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Extract LinkedIn hiring posts, manage leads, and generate AI-powered job application emails in one place.",
   "action": {
     "default_popup": "popup/popup.html",
@@ -20,15 +20,11 @@
   },
   "permissions": [
     "activeTab",
-    "storage",
-    "scripting"
+    "storage"
   ],
   "host_permissions": [
     "https://www.linkedin.com/*",
-    "https://linkedin.com/*",
-    "https://script.google.com/*",
-    "https://*.googleusercontent.com/*",
-    "<all_urls>"
+    "https://linkedin.com/*"
   ],
   "background": {
     "service_worker": "background/background.js"
