@@ -16,7 +16,7 @@
                 <img src="../icons/icon-48.png" alt="Logo" width="24" height="24">
                 <h1>Lead Extractor</h1>
             </div>
-            <span class="version">v1.0.2</span>
+            <span id="headerUsername" class="version">v1.0.2</span>
         </header>
 
         <!-- Main Content -->
@@ -198,6 +198,52 @@
                         <span>Send Email</span>
                     </button>
                 </footer>
+            </div>
+        </div>
+    </div>
+
+    <!-- Host Restriction Overlay -->
+    <div id="wrongHostView" class="overlay-view hidden">
+        <div class="overlay-content">
+            <div class="icon-circle error">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+            </div>
+            <h2>LinkedIn Only</h2>
+            <p>This extension is designed to work exclusively on LinkedIn.</p>
+            <div class="action-row">
+                <a href="https://www.linkedin.com/feed/" target="_blank" class="btn-primary">
+                    <span>Go to LinkedIn</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Onboarding Overlay -->
+    <div id="onboardingView" class="overlay-view hidden">
+        <div class="overlay-content">
+            <div class="icon-circle primary">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+            </div>
+            <h2>Welcome!</h2>
+            <p>Please enter your LinkedIn username to set up your workspace.</p>
+
+            <div class="input-group">
+                <label for="onboardingUsername">LinkedIn Username</label>
+                <input type="text" id="onboardingUsername" placeholder="e.g. john-doe">
+                <span class="input-hint">This will be used to store your data securely.</span>
+            </div>
+
+            <div class="action-row" style="margin-top: 16px;">
+                <button id="saveUsernameBtn" class="btn-primary">
+                    <span>Start Extraction</span>
+                </button>
             </div>
         </div>
     </div>

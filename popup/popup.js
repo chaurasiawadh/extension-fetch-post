@@ -4,6 +4,59 @@ document.addEventListener('DOMContentLoaded', async () => {
     // DOM Elements
     const scrollCountInput = document.getElementById('scrollCount');
     const extractBtn = document.getElementById('extractBtn');
+
+    // Views
+    const wrongHostView = document.getElementById('wrongHostView');
+    const onboardingView = document.getElementById('onboardingView');
+    const mainContent = document.querySelector('.main-content'); // We might need to hide this or just overlay covers it
+
+    // Onboarding Elements
+    const onboardingUsernameInput = document.getElementById('onboardingUsername');
+    const saveUsernameBtn = document.getElementById('saveUsernameBtn');
+
+    // Host Restriction Check
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const isLinkedIn = tab?.url?.includes('linkedin.com') || tab?.url?.includes('linkedin.cn');
+
+    if (!isLinkedIn) {
+        wrongHostView.classList.remove('hidden');
+        return; // Stop initialization
+    }
+
+    // User Onboarding Check (localStorage)
+    const currentUsername = localStorage.getItem('linkedin_username');
+
+    if (!currentUsername) {
+        onboardingView.classList.remove('hidden');
+
+        saveUsernameBtn.addEventListener('click', () => {
+            const username = onboardingUsernameInput.value.trim();
+            if (username) {
+                // Basic validation
+                if (username.length < 3) {
+                    alert('Please enter a valid username (min 3 chars).');
+                    return;
+                }
+
+                localStorage.setItem('linkedin_username', username);
+                location.reload(); // Reload to initialize with username
+            } else {
+                alert('Please enter a username.');
+            }
+        });
+        return; // Stop initialization
+    }
+
+    const headerUsernameEl = document.getElementById('headerUsername');
+    if (currentUsername && headerUsernameEl) {
+        headerUsernameEl.textContent = `@${currentUsername}`;
+        // Optional: Add a subtle style change to distinguish from version
+        headerUsernameEl.style.fontWeight = '600';
+        headerUsernameEl.style.color = 'var(--accent-secondary)';
+        headerUsernameEl.title = 'Current Workspace';
+    }
+
+    // Continue with normal initialization
     const clearHistoryBtn = document.getElementById('clearHistoryBtn');
     const historyCountEl = document.getElementById('historyCount');
     const statusBanner = document.getElementById('statusBanner');
@@ -47,9 +100,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateHistoryCount();
 
     // Load saved scroll count
-    const savedScroll = await chrome.storage.local.get(['scrollCount']);
-    if (savedScroll.scrollCount) {
-        scrollCountInput.value = savedScroll.scrollCount;
+    // Load saved scroll count (Scoped)
+    const scrollKey = `user_${currentUsername}_scrollCount`;
+    const savedScroll = await chrome.storage.local.get([scrollKey]);
+    if (savedScroll[scrollKey]) {
+        scrollCountInput.value = savedScroll[scrollKey];
     }
 
     // Event Listeners
@@ -70,8 +125,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (sendEmailBtn) sendEmailBtn.addEventListener('click', () => sendEmail(currentSelectedLead));
 
     // Save scroll count on change
+    // Save scroll count on change (Scoped)
     scrollCountInput.addEventListener('change', async () => {
-        await chrome.storage.local.set({ scrollCount: parseInt(scrollCountInput.value) || 5 });
+        const scrollKey = `user_${currentUsername}_scrollCount`;
+        await chrome.storage.local.set({ [scrollKey]: parseInt(scrollCountInput.value) || 5 });
     });
 
     // ===================================
@@ -326,16 +383,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     // HISTORY & UTILS
     // ===================================
     async function loadExtractedHistory() {
-        const key = `extracted_history_simple`; // New key for simplified version
+        if (!currentUsername) return new Set();
+        const key = `user_${currentUsername}_history`;
         const res = await chrome.storage.local.get([key]);
         return new Set(res[key] || []);
     }
 
     async function saveExtractedHistory(newEmails) {
+        if (!currentUsername) return new Set();
+        const key = `user_${currentUsername}_history`;
         const existing = await loadExtractedHistory();
         newEmails.forEach(e => existing.add(e.toLowerCase()));
         const arr = Array.from(existing).slice(-5000); // Keep last 5000
-        await chrome.storage.local.set({ [`extracted_history_simple`]: arr });
+        await chrome.storage.local.set({ [key]: arr });
         return new Set(arr);
     }
 
@@ -345,7 +405,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     async function clearHistory() {
-        await chrome.storage.local.remove([`extracted_history_simple`, 'leads_data_full']);
+        if (!currentUsername) return;
+        const historyKey = `user_${currentUsername}_history`;
+        const leadsKey = `user_${currentUsername}_leads`;
+        await chrome.storage.local.remove([historyKey, leadsKey]);
         extractedEmails = new Set();
         updateHistoryCount();
         updateStats(0, 0);
@@ -370,13 +433,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Lead Persistence Helpers
     async function loadExtractedLeads() {
-        const key = 'leads_data_full';
+        if (!currentUsername) return [];
+        const key = `user_${currentUsername}_leads`;
         const res = await chrome.storage.local.get([key]);
         return res[key] || [];
     }
 
     async function saveExtractedLeads(leads) {
-        const key = 'leads_data_full';
+        if (!currentUsername) return;
+        const key = `user_${currentUsername}_leads`;
         await chrome.storage.local.set({ [key]: leads });
     }
 

@@ -1258,3 +1258,73 @@ body.expanded {
     justify-content: flex-end;
     gap: 12px;
 }
+
+/* Overlay Views (Host Restriction & Onboarding) */
+.overlay-view {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--bg-primary);
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    animation: fadeIn 0.3s ease;
+}
+
+.overlay-view.hidden {
+    display: none;
+}
+
+.overlay-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 16px;
+    width: 100%;
+    max-width: 320px;
+}
+
+.overlay-content h2 {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.overlay-content p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin: 0;
+}
+
+.icon-circle {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 8px;
+}
+
+.icon-circle.error {
+    background: rgba(229, 62, 62, 0.1);
+    color: var(--error);
+}
+
+.icon-circle.primary {
+    background: rgba(0, 119, 181, 0.1);
+    color: var(--accent-primary);
+}
+
+/* Ensure links in overlays look like buttons */
+.overlay-view a.btn-primary {
+    text-decoration: none;
+    box-sizing: border-box;
+}
