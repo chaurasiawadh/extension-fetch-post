@@ -898,6 +898,8 @@ body.expanded {
     height: 100%;
     background: rgba(15, 23, 42, 0.6);
     backdrop-filter: blur(4px);
+    margin: 0;
+    padding: 0;
 }
 
 .modal-container {
@@ -912,6 +914,8 @@ body.expanded {
     overflow: hidden;
     z-index: 1001;
     animation: modalSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    margin: 0;
+    padding: 0;
 }
 
 @keyframes modalSlideUp {
@@ -1115,8 +1119,6 @@ body.expanded {
 /* Tooltip on hover for truncated cells */
 #leadsTable td:hover {
     position: relative;
-    overflow: visible;
-    white-space: normal;
     background: var(--bg-secondary);
     z-index: 20;
     box-shadow: var(--shadow-md);
@@ -1141,9 +1143,9 @@ body.expanded {
 
 /* Lead Details Modal Styles */
 .details-container {
-    max-width: 600px;
-    width: 90%;
-    max-height: 90vh;
+    /* max-width: 600px; */
+    width: 100vw;
+    max-height: 100vh;
     height: auto;
 }
 
