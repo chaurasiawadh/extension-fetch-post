@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LinkedIn Lead Extractor</title>
+    <title>Jobseekers for LinkedIn</title>
     <link rel="stylesheet" href="popup.css">
 </head>
 
@@ -14,7 +14,7 @@
         <header class="header">
             <div class="logo">
                 <img src="../icons/icon-48.png" alt="Logo" width="24" height="24">
-                <h1>Lead Extractor</h1>
+                <h1>Jobseekers</h1>
             </div>
             <span id="headerUsername" class="version">v1.0.2</span>
         </header>
@@ -98,6 +98,10 @@
         <!-- Footer Info -->
         <div class="footer-info">
             <span id="historyCount" class="history-count"></span>
+            <div class="footer-disclaimer">
+                <small>This extension is an independent tool and is not affiliated with, endorsed by, or sponsored by
+                    LinkedIn.</small>
+            </div>
         </div>
 
         <!-- Data Preview Modal -->
@@ -212,11 +216,11 @@
                     <line x1="12" y1="16" x2="12.01" y2="16"></line>
                 </svg>
             </div>
-            <h2>LinkedIn Only</h2>
-            <p>This extension is designed to work exclusively on LinkedIn.</p>
+            <h2>Only Works on LinkedIn</h2>
+            <p>This extension works exclusively on the LinkedIn website.</p>
             <div class="action-row">
                 <a href="https://www.linkedin.com/feed/" target="_blank" class="btn-primary">
-                    <span>Go to LinkedIn</span>
+                    <span>Open LinkedIn</span>
                 </a>
             </div>
         </div>
@@ -232,10 +236,10 @@
                 </svg>
             </div>
             <h2>Welcome!</h2>
-            <p>Please enter your LinkedIn username to set up your workspace.</p>
+            <p>Please enter your username to set up your workspace.</p>
 
             <div class="input-group">
-                <label for="onboardingUsername">LinkedIn Username</label>
+                <label for="onboardingUsername">Username (for tracking)</label>
                 <input type="text" id="onboardingUsername" placeholder="e.g. john-doe">
                 <span class="input-hint">This will be used to store your data securely.</span>
             </div>

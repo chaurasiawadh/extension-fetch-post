@@ -1,4 +1,4 @@
-// LinkedIn Lead Extractor - Simplified Popup Script
+// Jobseekers for LinkedIn - Popup Script
 
 document.addEventListener('DOMContentLoaded', async () => {
     // DOM Elements
@@ -372,7 +372,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const dateStr = new Date().toISOString().split('T')[0];
         const timeStr = new Date().toISOString().split('T')[1].split('.')[0].replace(/:/g, '-');
-        link.setAttribute('download', `linkedin_leads_${dateStr}_${timeStr}.csv`);
+        link.setAttribute('download', `jobseekers_leads_${dateStr}_${timeStr}.csv`);
 
         document.body.appendChild(link);
         link.click();

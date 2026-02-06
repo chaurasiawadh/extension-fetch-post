@@ -1,4 +1,4 @@
-/* Modern Dark Theme for LinkedIn Lead Extractor */
+/* Modern Dark Theme for Jobseekers Extension */
 :root {
     --bg-primary: #fdfbf7;
     --bg-secondary: #ffffff;
@@ -380,6 +380,17 @@ body.expanded {
 .footer-info span {
     font-size: 11px;
     color: var(--text-muted);
+}
+
+/* Disclaimer */
+.footer-disclaimer {
+    text-align: center;
+    padding: 12px;
+    font-size: 11px;
+    color: #888;
+    line-height: 1.4;
+    border-top: 1px solid var(--border-color);
+    margin-top: 8px;
 }
 
 /* Scrollbar */

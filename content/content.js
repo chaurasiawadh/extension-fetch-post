@@ -1,10 +1,10 @@
-// LinkedIn Lead Extractor - Content Script
+// Jobseekers for LinkedIn - Content Script
 // This script runs on LinkedIn pages, handles extraction and Watch Mode
 
 (function () {
   'use strict';
 
-  console.log('LinkedIn Lead Extractor content script loaded');
+  console.log('Jobseekers extension content script loaded');
 
   // ============================================================================
   // MESSAGE LISTENER

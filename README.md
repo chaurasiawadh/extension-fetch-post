@@ -1,6 +1,6 @@
-# LinkedIn Jobseekers
+# Jobseekers for LinkedIn
 
-LinkedIn Jobseekers is a productivity-focused Chrome extension designed to help job seekers save time and apply smarter.
+Jobseekers for LinkedIn is a productivity-focused Chrome extension designed to help job seekers save time and apply smarter.
 
 The extension allows users to extract hiring posts and recruiter details from LinkedIn Jobs and Posts, view and manage extracted leads in an interactive table, and generate personalized job application emails using AI based on the HR’s post content.
 
@@ -8,11 +8,17 @@ Users can review lead details, open recruiter profiles, access job links, and ge
 
 The extension supports data persistence, CSV export, and Gmail prefilled email sending to ensure full user control and privacy.
 
-LinkedIn Jobseekers is ideal for developers, freshers, and professionals who want to streamline their job search and outreach process.
+Jobseekers for LinkedIn is ideal for developers, freshers, and professionals who want to streamline their job search and outreach process.
+
+## ⚠️ Disclaimer
+
+**This extension is an independent tool and is not affiliated with, endorsed by, or sponsored by LinkedIn.**
+
+It is designed to help job seekers manage their job search more efficiently on the LinkedIn website.
 
 ## ✨ Features
 
-- **Lead Extraction**: Extract hiring posts and recruiter details from LinkedIn Jobs and Posts
+- **Lead Extraction**: Extract hiring posts and recruiter details from LinkedIn website
 - **Lead Management**: View and manage extracted leads in an interactive table
 - **AI Email Generation**: Generate personalized job application emails using AI based on post content
 - **Actionable Insights**: Review lead details, open recruiter profiles, and access job links
@@ -31,7 +37,7 @@ LinkedIn Jobseekers is ideal for developers, freshers, and professionals who wan
 
 ### Step 1: Extract Leads
 
-1. Go to LinkedIn and search for your target
+1. Navigate to the LinkedIn website and search for your target
 2. **Scroll down** to load more results
 3. Click the extension icon
 4. Use the interface to extract leads from visible posts

@@ -1,4 +1,4 @@
-// LinkedIn Lead Extractor - Background Service Worker
+// Jobseekers for LinkedIn - Background Service Worker
 
 // ===================================
 // LISTENERS for MULTI-TAB WATCH MODE

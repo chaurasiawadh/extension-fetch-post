@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "LinkedIn Jobseekers",
+  "name": "Jobseekers for LinkedIn",
   "version": "1.0.3",
-  "description": "Extract LinkedIn hiring posts, manage leads, and generate AI-powered job application emails in one place.",
+  "description": "Extract job leads from LinkedIn. Manage applications, generate AI emails. Works on LinkedIn website. Independent third-party tool.",
   "action": {
     "default_popup": "popup/popup.html",
     "default_icon": {

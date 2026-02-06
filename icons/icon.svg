@@ -1,39 +1,53 @@
 <svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#0077B5"/>
-      <stop offset="100%" style="stop-color:#00A0DC"/>
+    <!-- Purple gradient background -->
+    <linearGradient id="purpleGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#7C3AED"/>
+      <stop offset="100%" style="stop-color:#A855F7"/>
     </linearGradient>
-    <linearGradient id="arrowGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+    
+    <!-- White fill for briefcase -->
+    <linearGradient id="whiteGradient" x1="0%" y1="0%" x2="0%" y2="100%">
       <stop offset="0%" style="stop-color:#ffffff"/>
-      <stop offset="100%" style="stop-color:#e0f4ff"/>
+      <stop offset="100%" style="stop-color:#f0f0f0"/>
+    </linearGradient>
+    
+    <!-- Checkmark gradient -->
+    <linearGradient id="checkGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#10B981"/>
+      <stop offset="100%" style="stop-color:#059669"/>
     </linearGradient>
   </defs>
   
-  <!-- Background -->
-  <rect width="128" height="128" rx="24" fill="url(#bgGradient)"/>
+  <!-- Background with rounded corners -->
+  <rect width="128" height="128" rx="24" fill="url(#purpleGradient)"/>
   
-  <!-- Network dots -->
-  <circle cx="28" cy="32" r="6" fill="rgba(255,255,255,0.3)"/>
-  <circle cx="100" cy="32" r="6" fill="rgba(255,255,255,0.3)"/>
-  <circle cx="28" cy="96" r="6" fill="rgba(255,255,255,0.3)"/>
-  <circle cx="100" cy="96" r="6" fill="rgba(255,255,255,0.3)"/>
-  
-  <!-- Connection lines -->
-  <line x1="34" y1="32" x2="50" y2="50" stroke="rgba(255,255,255,0.2)" stroke-width="2"/>
-  <line x1="94" y1="32" x2="78" y2="50" stroke="rgba(255,255,255,0.2)" stroke-width="2"/>
-  <line x1="34" y1="96" x2="50" y2="78" stroke="rgba(255,255,255,0.2)" stroke-width="2"/>
-  <line x1="94" y1="96" x2="78" y2="78" stroke="rgba(255,255,255,0.2)" stroke-width="2"/>
-  
-  <!-- Download arrow -->
+  <!-- Briefcase icon -->
   <g transform="translate(64, 64)">
-    <!-- Arrow body -->
-    <rect x="-8" y="-30" width="16" height="40" rx="4" fill="url(#arrowGradient)"/>
+    <!-- Briefcase body -->
+    <rect x="-28" y="-8" width="56" height="32" rx="4" fill="url(#whiteGradient)"/>
     
-    <!-- Arrow head -->
-    <polygon points="0,30 -20,10 -10,10 -10,-5 10,-5 10,10 20,10" fill="url(#arrowGradient)"/>
+    <!-- Briefcase handle -->
+    <path d="M -12 -8 L -12 -16 Q -12 -20 -8 -20 L 8 -20 Q 12 -20 12 -16 L 12 -8" 
+          fill="none" stroke="url(#whiteGradient)" stroke-width="6" stroke-linecap="round"/>
     
-    <!-- Base line -->
-    <rect x="-24" y="35" width="48" height="6" rx="3" fill="url(#arrowGradient)"/>
+    <!-- Briefcase latch -->
+    <rect x="-4" y="-4" width="8" height="16" rx="2" fill="#7C3AED" opacity="0.3"/>
+    
+    <!-- Briefcase top line detail -->
+    <line x1="-28" y1="0" x2="28" y2="0" stroke="#7C3AED" stroke-width="2" opacity="0.2"/>
   </g>
+  
+  <!-- Checkmark badge (bottom right) -->
+  <circle cx="92" cy="92" r="20" fill="url(#checkGradient)"/>
+  <circle cx="92" cy="92" r="20" fill="none" stroke="#ffffff" stroke-width="3"/>
+  
+  <!-- Checkmark symbol -->
+  <path d="M 84 92 L 89 97 L 100 84" 
+        fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <!-- Subtle sparkles for job seeker success theme -->
+  <circle cx="24" cy="24" r="3" fill="#ffffff" opacity="0.6"/>
+  <circle cx="104" cy="30" r="2" fill="#ffffff" opacity="0.5"/>
+  <circle cx="30" cy="100" r="2.5" fill="#ffffff" opacity="0.4"/>
 </svg>
