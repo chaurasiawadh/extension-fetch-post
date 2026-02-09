@@ -1,7 +1,7 @@
 // Jobseekers for LinkedIn - Popup Script
 
 // Import API utilities
-import { registerUser } from './useApi.js';
+import { registerUser, uploadResume } from './useApi.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
     // DOM Elements
@@ -127,6 +127,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const confirmChangeUsernameBtn = document.getElementById('confirmChangeUsernameBtn');
     const cancelChangeUsernameBtn = document.getElementById('cancelChangeUsernameBtn');
 
+    // Resume Upload Elements
+    const uploadResumeBtn = document.getElementById('uploadResumeBtn');
+    const resumeFileInput = document.getElementById('resumeFileInput');
+
     let currentSelectedLead = null; // Store currently selected lead
 
     // State
@@ -173,6 +177,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (changeUsernameBtn) changeUsernameBtn.addEventListener('click', openChangeUsernameModal);
     if (cancelChangeUsernameBtn) cancelChangeUsernameBtn.addEventListener('click', closeChangeUsernameModal);
     if (confirmChangeUsernameBtn) confirmChangeUsernameBtn.addEventListener('click', handleUsernameChange);
+
+    // Resume Upload Listeners
+    if (uploadResumeBtn) uploadResumeBtn.addEventListener('click', () => resumeFileInput.click());
+    if (resumeFileInput) resumeFileInput.addEventListener('change', handleResumeUpload);
 
     // Save scroll count on change (Scoped)
     scrollCountInput.addEventListener('change', async () => {
@@ -710,6 +718,68 @@ Best regards,
             // Reset button
             confirmChangeUsernameBtn.disabled = false;
             confirmChangeUsernameBtn.innerHTML = originalText;
+        }
+    }
+
+    // ===================================
+    // RESUME UPLOAD FUNCTIONALITY
+    // ===================================
+    async function handleResumeUpload(event) {
+        const file = event.target.files[0];
+
+        // Reset file input for future uploads
+        event.target.value = '';
+
+        // Validate file selection
+        if (!file) {
+            return;
+        }
+
+        // Validate file type
+        if (file.type !== 'application/pdf') {
+            alert('Please select a PDF file.');
+            return;
+        }
+
+        // Validate file size (max 10MB)
+        const maxSize = 10 * 1024 * 1024; // 10MB in bytes
+        if (file.size > maxSize) {
+            alert('File size must be less than 10MB.');
+            return;
+        }
+
+        // Get user_id from localStorage
+        const userId = localStorage.getItem('linkedin_user_id');
+        if (!userId) {
+            alert('User ID not found. Please log in again.');
+            return;
+        }
+
+        // Disable button and show loading state
+        uploadResumeBtn.disabled = true;
+        const originalText = uploadResumeBtn.innerHTML;
+        uploadResumeBtn.innerHTML = '<span>Uploading...</span>';
+
+        try {
+            // Call API to upload resume
+            const result = await uploadResume(userId, file);
+
+            if (result.success && result.data) {
+                // Success response
+                const { filename, extracted_length } = result.data;
+                showStatus('success', `✓ Resume uploaded successfully! (${filename}, ${extracted_length} chars extracted)`);
+            } else {
+                // API failed or invalid response
+                showStatus('error', `✗ ${result.error || 'Upload failed. Please try again.'}`);
+            }
+        } catch (error) {
+            // Unexpected error
+            showStatus('error', '✗ An unexpected error occurred. Please try again.');
+            console.error('Resume upload error:', error);
+        } finally {
+            // Reset button
+            uploadResumeBtn.disabled = false;
+            uploadResumeBtn.innerHTML = originalText;
         }
     }
 });

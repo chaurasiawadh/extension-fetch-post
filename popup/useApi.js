@@ -105,3 +105,83 @@ export async function registerUser(username) {
         user_id: result.data.user_id
     };
 }
+
+/**
+ * Upload resume for a user
+ * @param {string} userId - User ID from localStorage
+ * @param {File} file - PDF resume file
+ * @returns {Promise<{success: boolean, data?: any, error?: string}>}
+ */
+export async function uploadResume(userId, file) {
+    const url = `${API_BASE_URL}/upload-resume`;
+
+    // Create FormData for file upload
+    const formData = new FormData();
+    formData.append('user_id', userId);
+    formData.append('file', file);
+
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            body: formData
+            // Don't set Content-Type header - browser will set it with boundary for multipart/form-data
+        });
+
+        // Check if response is ok (status 200-299)
+        if (!response.ok) {
+            let errorMessage = response.statusText;
+
+            try {
+                const errorData = await response.json();
+                if (errorData && errorData.message) {
+                    errorMessage = errorData.message;
+                } else if (typeof errorData === 'string') {
+                    errorMessage = errorData;
+                }
+            } catch (parseError) {
+                try {
+                    const errorText = await response.text();
+                    if (errorText) errorMessage = errorText;
+                } catch (textError) {
+                    // Keep default statusText
+                }
+            }
+
+            return {
+                success: false,
+                error: errorMessage,
+                statusCode: response.status
+            };
+        }
+
+        // Parse JSON response
+        const data = await response.json();
+
+        // Validate response using message field
+        if (data.message !== 'success') {
+            return {
+                success: false,
+                error: 'Upload failed: Invalid server response'
+            };
+        }
+
+        return {
+            success: true,
+            data: data
+        };
+
+    } catch (error) {
+        // Handle network errors
+        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+            return {
+                success: false,
+                error: 'Network error: Unable to connect to server. Please check your internet connection.'
+            };
+        }
+
+        return {
+            success: false,
+            error: `Request failed: ${error.message}`
+        };
+    }
+}
