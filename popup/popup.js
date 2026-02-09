@@ -98,7 +98,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Continue with normal initialization
-    const clearHistoryBtn = document.getElementById('clearHistoryBtn');
     const historyCountEl = document.getElementById('historyCount');
     const statusBanner = document.getElementById('statusBanner');
     const statusIcon = document.getElementById('statusIcon');
@@ -156,7 +155,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Event Listeners
     extractBtn.addEventListener('click', extractLeads);
-    clearHistoryBtn.addEventListener('click', clearHistory);
 
     // Modal Listeners
     if (viewDataBtn) {
@@ -455,18 +453,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         historyCountEl.textContent = count > 0 ? `📊 ${count} leads in history` : '';
     }
 
-    async function clearHistory() {
-        if (!currentUsername) return;
-        const historyKey = `user_${currentUsername}_history`;
-        const leadsKey = `user_${currentUsername}_leads`;
-        await chrome.storage.local.remove([historyKey, leadsKey]);
-        extractedEmails = new Set();
-        updateHistoryCount();
-        updateStats(0, 0);
-        currentLeads = [];
-        if (viewDataBtn) viewDataBtn.classList.add('hidden');
-        showStatus('success', 'History cleared');
-    }
+
 
     function showStatus(type, msg) {
         statusBanner.className = `status-banner ${type}`;
