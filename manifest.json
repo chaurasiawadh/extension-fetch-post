@@ -24,7 +24,8 @@
   ],
   "host_permissions": [
     "https://www.linkedin.com/*",
-    "https://linkedin.com/*"
+    "https://linkedin.com/*",
+    "https://jobseekers-for-linkedin-production.up.railway.app/*"
   ],
   "background": {
     "service_worker": "background/background.js"

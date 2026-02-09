@@ -1,5 +1,8 @@
 // Jobseekers for LinkedIn - Popup Script
 
+// Import API utilities
+import { registerUser } from './useApi.js';
+
 document.addEventListener('DOMContentLoaded', async () => {
     // DOM Elements
     const scrollCountInput = document.getElementById('scrollCount');
@@ -29,31 +32,69 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!currentUsername) {
         onboardingView.classList.remove('hidden');
 
-        saveUsernameBtn.addEventListener('click', () => {
+        saveUsernameBtn.addEventListener('click', async () => {
             const username = onboardingUsernameInput.value.trim();
-            if (username) {
-                // Basic validation
-                if (username.length < 3) {
-                    alert('Please enter a valid username (min 3 chars).');
-                    return;
-                }
-
-                localStorage.setItem('linkedin_username', username);
-                location.reload(); // Reload to initialize with username
-            } else {
+            if (!username) {
                 alert('Please enter a username.');
+                return;
+            }
+
+            // Basic validation
+            if (username.length < 3) {
+                alert('Please enter a valid username (min 3 chars).');
+                return;
+            }
+
+            // Disable button and show loading state
+            saveUsernameBtn.disabled = true;
+            const originalText = saveUsernameBtn.innerHTML;
+            saveUsernameBtn.innerHTML = '<span>Registering...</span>';
+
+            try {
+                // Call backend API to register user
+                const result = await registerUser(username);
+
+                if (result.success && result.user_id) {
+                    // Store both username and user_id
+                    localStorage.setItem('linkedin_username', username);
+                    localStorage.setItem('linkedin_user_id', result.user_id);
+
+                    // Reload to initialize with username
+                    location.reload();
+                } else {
+                    // API failed or invalid response
+                    alert(result.error || 'Registration failed. Please try again.');
+
+                    // Reset button
+                    saveUsernameBtn.disabled = false;
+                    saveUsernameBtn.innerHTML = originalText;
+                }
+            } catch (error) {
+                // Unexpected error
+                alert('An unexpected error occurred. Please try again.');
+                console.error('Registration error:', error);
+
+                // Reset button
+                saveUsernameBtn.disabled = false;
+                saveUsernameBtn.innerHTML = originalText;
             }
         });
         return; // Stop initialization
     }
 
     const headerUsernameEl = document.getElementById('headerUsername');
+    const changeUsernameBtn = document.getElementById('changeUsernameBtn');
     if (currentUsername && headerUsernameEl) {
         headerUsernameEl.textContent = `@${currentUsername}`;
         // Optional: Add a subtle style change to distinguish from version
         headerUsernameEl.style.fontWeight = '600';
         headerUsernameEl.style.color = 'var(--accent-secondary)';
         headerUsernameEl.title = 'Current Workspace';
+
+        // Show the change username button
+        if (changeUsernameBtn) {
+            changeUsernameBtn.classList.remove('hidden');
+        }
     }
 
     // Continue with normal initialization
@@ -80,6 +121,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const aiWriteBtn = document.getElementById('aiWriteBtn');
     const sendEmailBtn = document.getElementById('sendEmailBtn');
     const emailDraft = document.getElementById('emailDraft');
+
+    // Change Username Modal Elements
+    const changeUsernameView = document.getElementById('changeUsernameView');
+    const newUsernameInput = document.getElementById('newUsername');
+    const confirmChangeUsernameBtn = document.getElementById('confirmChangeUsernameBtn');
+    const cancelChangeUsernameBtn = document.getElementById('cancelChangeUsernameBtn');
 
     let currentSelectedLead = null; // Store currently selected lead
 
@@ -124,7 +171,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (aiWriteBtn) aiWriteBtn.addEventListener('click', () => generateEmail(currentSelectedLead));
     if (sendEmailBtn) sendEmailBtn.addEventListener('click', () => sendEmail(currentSelectedLead));
 
-    // Save scroll count on change
+    // Change Username Modal Listeners
+    if (changeUsernameBtn) changeUsernameBtn.addEventListener('click', openChangeUsernameModal);
+    if (cancelChangeUsernameBtn) cancelChangeUsernameBtn.addEventListener('click', closeChangeUsernameModal);
+    if (confirmChangeUsernameBtn) confirmChangeUsernameBtn.addEventListener('click', handleUsernameChange);
+
     // Save scroll count on change (Scoped)
     scrollCountInput.addEventListener('change', async () => {
         const scrollKey = `user_${currentUsername}_scrollCount`;
@@ -578,6 +629,101 @@ Best regards,
 
         const mailtoLink = `mailto:${to}?subject=${subject}&body=${body}`;
         window.open(mailtoLink, '_blank');
+    }
+
+    // ===================================
+    // CHANGE USERNAME FUNCTIONALITY
+    // ===================================
+    function openChangeUsernameModal() {
+        newUsernameInput.value = '';
+        changeUsernameView.classList.remove('hidden');
+        newUsernameInput.focus();
+    }
+
+    function closeChangeUsernameModal() {
+        changeUsernameView.classList.add('hidden');
+        newUsernameInput.value = '';
+    }
+
+    async function handleUsernameChange() {
+        const newUsername = newUsernameInput.value.trim();
+
+        // Validation
+        if (!newUsername) {
+            alert('Please enter a username.');
+            return;
+        }
+
+        if (newUsername.length < 3) {
+            alert('Please enter a valid username (min 3 chars).');
+            return;
+        }
+
+        if (newUsername === currentUsername) {
+            alert('This is already your current username.');
+            return;
+        }
+
+        // Disable button and show loading state
+        confirmChangeUsernameBtn.disabled = true;
+        const originalText = confirmChangeUsernameBtn.innerHTML;
+        confirmChangeUsernameBtn.innerHTML = '<span>Updating...</span>';
+
+        try {
+            // Call backend API to register new username
+            const result = await registerUser(newUsername);
+
+            if (result.success && result.user_id) {
+                // Get current user's data before switching
+                const oldUsername = currentUsername;
+                const oldLeadsKey = `user_${oldUsername}_leads`;
+                const oldHistoryKey = `user_${oldUsername}_history`;
+                const oldScrollKey = `user_${oldUsername}_scrollCount`;
+
+                // Retrieve all old data
+                const oldData = await chrome.storage.local.get([oldLeadsKey, oldHistoryKey, oldScrollKey]);
+
+                // Update localStorage with new username
+                localStorage.setItem('linkedin_username', newUsername);
+                localStorage.setItem('linkedin_user_id', result.user_id);
+
+                // Migrate data to new username keys
+                const newLeadsKey = `user_${newUsername}_leads`;
+                const newHistoryKey = `user_${newUsername}_history`;
+                const newScrollKey = `user_${newUsername}_scrollCount`;
+
+                const migratedData = {};
+                if (oldData[oldLeadsKey]) migratedData[newLeadsKey] = oldData[oldLeadsKey];
+                if (oldData[oldHistoryKey]) migratedData[newHistoryKey] = oldData[oldHistoryKey];
+                if (oldData[oldScrollKey]) migratedData[newScrollKey] = oldData[oldScrollKey];
+
+                // Save migrated data
+                if (Object.keys(migratedData).length > 0) {
+                    await chrome.storage.local.set(migratedData);
+                }
+
+                // Clean up old data
+                await chrome.storage.local.remove([oldLeadsKey, oldHistoryKey, oldScrollKey]);
+
+                // Reload to initialize with new username
+                location.reload();
+            } else {
+                // API failed or invalid response
+                alert(result.error || 'Username update failed. Please try again.');
+
+                // Reset button
+                confirmChangeUsernameBtn.disabled = false;
+                confirmChangeUsernameBtn.innerHTML = originalText;
+            }
+        } catch (error) {
+            // Unexpected error
+            alert('An unexpected error occurred. Please try again.');
+            console.error('Username change error:', error);
+
+            // Reset button
+            confirmChangeUsernameBtn.disabled = false;
+            confirmChangeUsernameBtn.innerHTML = originalText;
+        }
     }
 });
 

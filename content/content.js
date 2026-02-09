@@ -35,7 +35,14 @@
   // Notify background that page loaded (for Watch Mode)
   // We delay slightly to ensure page is somewhat ready
   setTimeout(() => {
-    chrome.runtime.sendMessage({ type: 'PAGE_LOADED', url: window.location.href });
+    try {
+      chrome.runtime.sendMessage({ type: 'PAGE_LOADED', url: window.location.href });
+    } catch (error) {
+      // Silently ignore if extension context is invalidated (happens when extension is reloaded)
+      if (!error.message.includes('Extension context invalidated')) {
+        console.warn('Failed to notify background of page load:', error);
+      }
+    }
   }, 2000);
 
 
