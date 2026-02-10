@@ -142,6 +142,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentLeads = []; // Store leads for preview
     let isLoadingData = false;
 
+    // Sorting state
+    let sortState = {
+        column: null,
+        direction: 'asc' // 'asc' or 'desc'
+    };
+
     // Initialize - Fetch data from backend
     const userId = localStorage.getItem('linkedin_user_id');
     if (userId) {
@@ -345,12 +351,77 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.body.classList.remove('expanded');
     }
 
+    // Sorting function
+    function sortLeads(leads, column) {
+        const direction = sortState.column === column && sortState.direction === 'asc' ? 'desc' : 'asc';
+        sortState = { column, direction };
+
+        const sorted = [...leads].sort((a, b) => {
+            let valA = a[column] || '';
+            let valB = b[column] || '';
+
+            // Handle dates
+            if (column === 'extractedAt') {
+                valA = new Date(valA);
+                valB = new Date(valB);
+            } else {
+                // Handle strings (case-insensitive)
+                valA = String(valA).toLowerCase();
+                valB = String(valB).toLowerCase();
+            }
+
+            if (valA < valB) return direction === 'asc' ? -1 : 1;
+            if (valA > valB) return direction === 'asc' ? 1 : -1;
+            return 0;
+        });
+
+        // Update header indicators
+        updateSortIndicators();
+
+        return sorted;
+    }
+
+    function updateSortIndicators() {
+        // Remove all sort indicators
+        const headers = document.querySelectorAll('#leadsTable thead th');
+        headers.forEach(th => {
+            th.classList.remove('sorted-asc', 'sorted-desc');
+        });
+
+        // Add indicator to current sorted column
+        if (sortState.column) {
+            const activeHeader = document.querySelector(`#leadsTable thead th[data-column="${sortState.column}"]`);
+            if (activeHeader) {
+                activeHeader.classList.add(sortState.direction === 'asc' ? 'sorted-asc' : 'sorted-desc');
+            }
+        }
+    }
+
+    // Initialize table header sorting
+    function initializeTableSorting() {
+        const headers = document.querySelectorAll('#leadsTable thead th.sortable');
+        headers.forEach(header => {
+            header.addEventListener('click', () => {
+                const column = header.getAttribute('data-column');
+                if (column) {
+                    const sorted = sortLeads(currentLeads, column);
+                    renderTable(sorted);
+                }
+            });
+        });
+    }
+
+    // Call initialization after modal opens
+    setTimeout(() => {
+        initializeTableSorting();
+    }, 100);
+
     function renderTable(leads) {
         leadsTableBody.innerHTML = '';
 
         if (!leads || leads.length === 0) {
             const row = document.createElement('tr');
-            row.innerHTML = `<td colspan="7" style="text-align: center; padding: 24px; color: #888;">No data extracted yet</td>`;
+            row.innerHTML = `<td colspan="6" style="text-align: center; padding: 24px; color: #888;">No data extracted yet</td>`;
             leadsTableBody.appendChild(row);
             return;
         }
@@ -391,14 +462,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             row.appendChild(jobCell);
 
-            // 6. Post Preview (Truncated)
-            const postCell = document.createElement('td');
-            const rawPost = (lead.postPreview || '-').replace(/\n/g, ' ').substring(0, 100);
-            postCell.textContent = rawPost;
-            postCell.title = lead.postPreview || '';
-            row.appendChild(postCell);
-
-            // 7. Extracted At
+            // 6. Extracted At
             const timeCell = document.createElement('td');
             timeCell.textContent = formatDate(lead.extractedAt);
             row.appendChild(timeCell);
@@ -422,8 +486,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     function downloadLeadsCsv(leads) {
         if (!leads || leads.length === 0) return;
 
-        // CSV Headers
-        const headers = ['Name', 'Title', 'Profile URL', 'Email', 'Job Link', 'Post Preview', 'Extracted At'];
+        // CSV Headers (Post Preview excluded)
+        const headers = ['Name', 'Title', 'Profile URL', 'Email', 'Job Link', 'Extracted At'];
 
         // Helper to escape CSV fields
         const escapeCsv = (field) => {
@@ -435,14 +499,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             return stringField;
         };
 
-        // Generate Rows
+        // Generate Rows (Post Preview excluded)
         const rows = leads.map(lead => [
             escapeCsv(lead.name),
             escapeCsv(lead.title),
             escapeCsv(lead.profileUrl),
             escapeCsv(lead.email),
             escapeCsv(lead.jobLink),
-            escapeCsv(lead.postPreview),
             escapeCsv(lead.extractedAt)
         ]);
 

@@ -131,28 +131,26 @@
                 </header>
                 <div class="modal-body">
                     <div class="table-wrapper">
-                        <!-- Table Loader -->
-                        <div id="tableLoader" class="table-loader hidden">
-                            <div class="loader-spinner"></div>
-                            <p>Loading data...</p>
-                        </div>
-
                         <table id="leadsTable">
                             <thead>
                                 <tr>
-                                    <th>Name</th>
-                                    <th>Title</th>
-                                    <th>Profile URL</th>
-                                    <th>Email</th>
-                                    <th>Job Link</th>
-                                    <th>Post Preview</th>
-                                    <th>Extracted At</th>
+                                    <th data-column="name" class="sortable">Name</th>
+                                    <th data-column="title" class="sortable">Title</th>
+                                    <th data-column="profileUrl" class="sortable">Profile</th>
+                                    <th data-column="email" class="sortable">Email</th>
+                                    <th data-column="jobLink" class="sortable">Job Link</th>
+                                    <th data-column="extractedAt" class="sortable">Extracted At</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <!-- Rows injected here -->
                             </tbody>
                         </table>
+
+                        <!-- Table Loader -->
+                        <div id="tableLoader" class="table-loader hidden">
+                            <div class="loader-spinner"></div>
+                        </div>
                     </div>
                 </div>
             </div>
