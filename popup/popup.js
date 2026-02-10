@@ -698,6 +698,28 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (emailSection) emailSection.style.display = 'none';
             if (sendEmailBtn) sendEmailBtn.style.display = 'none';
             if (noEmailGuidance) noEmailGuidance.style.display = '';
+
+            // Populate clickable links in the guidance message
+            const noEmailJobLink = document.getElementById('noEmailJobLink');
+            const noEmailProfileLink = document.getElementById('noEmailProfileLink');
+
+            if (noEmailJobLink) {
+                if (lead.jobLink) {
+                    noEmailJobLink.href = lead.jobLink;
+                    noEmailJobLink.style.display = '';
+                } else {
+                    noEmailJobLink.style.display = 'none';
+                }
+            }
+
+            if (noEmailProfileLink) {
+                if (lead.profileUrl) {
+                    noEmailProfileLink.href = lead.profileUrl;
+                    noEmailProfileLink.style.display = '';
+                } else {
+                    noEmailProfileLink.style.display = 'none';
+                }
+            }
         }
 
         // Show modal
