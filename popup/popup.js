@@ -678,8 +678,27 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('detailDate').textContent = formatDate(lead.extractedAt);
         document.getElementById('detailPost').textContent = lead.postPreview || 'No post description available';
 
-        // Clear email draft
-        emailDraft.value = '';
+        // Check if email is available
+        const hasEmail = lead.email && lead.email.trim() !== '' && lead.email !== 'N/A' && lead.email !== '-';
+
+        // Get email-related elements
+        const emailSection = document.querySelector('.email-section');
+        const sendEmailBtn = document.getElementById('sendEmailBtn');
+        const noEmailGuidance = document.getElementById('noEmailGuidance');
+
+        if (hasEmail) {
+            // Show email sections, hide guidance
+            if (emailSection) emailSection.classList.remove('hidden');
+            if (sendEmailBtn) sendEmailBtn.classList.remove('hidden');
+            if (noEmailGuidance) noEmailGuidance.classList.add('hidden');
+            // Clear email draft
+            emailDraft.value = '';
+        } else {
+            // Hide email sections, show guidance
+            if (emailSection) emailSection.classList.add('hidden');
+            if (sendEmailBtn) sendEmailBtn.classList.add('hidden');
+            if (noEmailGuidance) noEmailGuidance.classList.remove('hidden');
+        }
 
         // Show modal
         leadDetailsModal.classList.remove('hidden');

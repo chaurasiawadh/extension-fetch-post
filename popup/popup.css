@@ -1414,3 +1414,45 @@ body.expanded {
     text-decoration: none;
     box-sizing: border-box;
 }
+
+/* No Email Guidance Info Block */
+.no-email-info {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px;
+    background: rgba(0, 119, 181, 0.1);
+    border: 1px solid rgba(0, 119, 181, 0.3);
+    border-radius: var(--radius-md);
+    margin-top: 20px;
+}
+
+.no-email-info.hidden {
+    display: none;
+}
+
+.info-icon {
+    font-size: 24px;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.info-content {
+    flex: 1;
+}
+
+.info-content p {
+    margin: 0;
+    font-size: 13px;
+    color: var(--text-primary);
+    line-height: 1.5;
+}
+
+.info-content p:first-child {
+    margin-bottom: 8px;
+}
+
+.info-content strong {
+    color: var(--accent-primary);
+    font-weight: 600;
+}
