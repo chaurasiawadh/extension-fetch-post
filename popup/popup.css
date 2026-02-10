@@ -1168,19 +1168,19 @@ body.expanded {
 /* Profile URL */
 #leadsTable th:nth-child(3),
 #leadsTable td:nth-child(3) {
-    max-width: 100px;
+    max-width: 80px;
 }
 
-/* Email */
+/* Email - Increased width to show full email addresses */
 #leadsTable th:nth-child(4),
 #leadsTable td:nth-child(4) {
-    max-width: 140px;
+    max-width: 220px;
 }
 
-/* Job Link */
+/* Job Link - Reduced width since it only shows link text */
 #leadsTable th:nth-child(5),
 #leadsTable td:nth-child(5) {
-    max-width: 100px;
+    max-width: 80px;
 }
 
 /* Extracted At */
