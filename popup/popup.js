@@ -688,16 +688,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (hasEmail) {
             // Show email sections, hide guidance
-            if (emailSection) emailSection.classList.remove('hidden');
-            if (sendEmailBtn) sendEmailBtn.classList.remove('hidden');
-            if (noEmailGuidance) noEmailGuidance.classList.add('hidden');
+            if (emailSection) emailSection.style.display = '';
+            if (sendEmailBtn) sendEmailBtn.style.display = '';
+            if (noEmailGuidance) noEmailGuidance.style.display = 'none';
             // Clear email draft
             emailDraft.value = '';
         } else {
             // Hide email sections, show guidance
-            if (emailSection) emailSection.classList.add('hidden');
-            if (sendEmailBtn) sendEmailBtn.classList.add('hidden');
-            if (noEmailGuidance) noEmailGuidance.classList.remove('hidden');
+            if (emailSection) emailSection.style.display = 'none';
+            if (sendEmailBtn) sendEmailBtn.style.display = 'none';
+            if (noEmailGuidance) noEmailGuidance.style.display = '';
         }
 
         // Show modal
