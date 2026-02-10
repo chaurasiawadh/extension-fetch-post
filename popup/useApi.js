@@ -185,3 +185,68 @@ export async function uploadResume(userId, file) {
         };
     }
 }
+
+/**
+ * Save HR contacts to backend
+ * @param {string} userId - User ID from localStorage
+ * @param {Array} hrContacts - Array of HR contact objects
+ * @returns {Promise<{success: boolean, data?: any, error?: string}>}
+ */
+export async function saveHRContacts(userId, hrContacts) {
+    const result = await callApi('/hr-contacts', {
+        method: 'POST',
+        body: JSON.stringify({
+            user_id: userId,
+            hr_contacts: hrContacts
+        })
+    });
+
+    if (!result.success) {
+        return result;
+    }
+
+    // Validate response
+    if (!result.data || result.data.message !== 'success') {
+        return {
+            success: false,
+            error: 'Invalid response: Could not save HR contacts'
+        };
+    }
+
+    return {
+        success: true,
+        data: result.data
+    };
+}
+
+/**
+ * Fetch HR contacts from backend
+ * @param {string} userId - User ID from localStorage
+ * @returns {Promise<{success: boolean, data?: Array, error?: string}>}
+ */
+export async function fetchHRContacts(userId) {
+    const result = await callApi(`/hr-contacts?user_id=${userId}&limit=100`, {
+        method: 'GET'
+    });
+
+    if (!result.success) {
+        return result;
+    }
+
+    // Validate response data exists
+    if (!result.data) {
+        return {
+            success: true,
+            data: []
+        };
+    }
+
+    // Return the contacts array from response (API returns 'contacts', not 'hr_contacts')
+    const contacts = result.data.contacts;
+
+    // Ensure we return an array even if contacts is undefined, null, or not an array
+    return {
+        success: true,
+        data: Array.isArray(contacts) ? contacts : []
+    };
+}

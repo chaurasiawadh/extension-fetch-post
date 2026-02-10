@@ -1,7 +1,7 @@
 // Jobseekers for LinkedIn - Popup Script
 
 // Import API utilities
-import { registerUser, uploadResume } from './useApi.js';
+import { registerUser, uploadResume, saveHRContacts, fetchHRContacts } from './useApi.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
     // DOM Elements
@@ -131,20 +131,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     const uploadResumeBtn = document.getElementById('uploadResumeBtn');
     const resumeFileInput = document.getElementById('resumeFileInput');
 
+    // Table Loader Element
+    const tableLoader = document.getElementById('tableLoader');
+
     let currentSelectedLead = null; // Store currently selected lead
 
     // State
     let extractedEmails = new Set();
     let isExtracting = false;
     let currentLeads = []; // Store leads for preview
+    let isLoadingData = false;
 
-    // Initialize
-    extractedEmails = await loadExtractedHistory();
-    currentLeads = await loadExtractedLeads(); // Load full lead objects
+    // Initialize - Fetch data from backend
+    const userId = localStorage.getItem('linkedin_user_id');
+    if (userId) {
+        extractedEmails = await loadExtractedHistory();
+        currentLeads = await loadExtractedLeadsFromBackend(); // Fetch from backend
 
-    if (currentLeads.length > 0) {
-        if (viewDataBtn) viewDataBtn.classList.remove('hidden');
-        showStatus('success', `Loaded ${currentLeads.length} saved leads`);
+        if (currentLeads.length > 0) {
+            if (viewDataBtn) viewDataBtn.classList.remove('hidden');
+            if (downloadCsvBtn) downloadCsvBtn.classList.remove('hidden');
+        } else {
+            if (downloadCsvBtn) downloadCsvBtn.classList.add('hidden');
+        }
     }
 
     updateHistoryCount();
@@ -272,7 +281,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Append new leads to history
         currentLeads = [...currentLeads, ...leads];
-        await saveExtractedLeads(currentLeads);
+        await saveExtractedLeadsToBackend(currentLeads);
 
         if (newCount === 0) {
             if (duplicates > 0) {
@@ -289,8 +298,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         extractedEmails = await saveExtractedHistory(newHistoryItems);
         updateHistoryCount();
 
-        // Enable "View Data" button
+        // Enable "View Data" button and Download button
         if (viewDataBtn) viewDataBtn.classList.remove('hidden');
+        if (downloadCsvBtn) downloadCsvBtn.classList.remove('hidden');
 
         showStatus('success', `✓ Extracted ${newCount} new leads!`);
         resetButton();
@@ -302,11 +312,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ===================================
     // DATA PREVIEW MODAL
     // ===================================
-    function openModal() {
-        // Always open modal, even if empty
+    async function openModal() {
         document.body.classList.add('expanded');
-        renderTable(currentLeads || []);
         dataModal.classList.remove('hidden');
+
+        // Show loader and hide table
+        if (tableLoader) tableLoader.classList.remove('hidden');
+        if (leadsTableBody) leadsTableBody.style.display = 'none';
+
+        // Fetch data from backend
+        const userId = localStorage.getItem('linkedin_user_id');
+        if (userId) {
+            currentLeads = await loadExtractedLeadsFromBackend();
+        }
+
+        // Hide loader and show table
+        if (tableLoader) tableLoader.classList.add('hidden');
+        if (leadsTableBody) leadsTableBody.style.display = '';
+
+        // Update download button visibility
+        if (currentLeads.length > 0) {
+            if (downloadCsvBtn) downloadCsvBtn.classList.remove('hidden');
+        } else {
+            if (downloadCsvBtn) downloadCsvBtn.classList.add('hidden');
+        }
+
+        renderTable(currentLeads || []);
     }
 
     function closeModal() {
@@ -477,18 +508,42 @@ document.addEventListener('DOMContentLoaded', async () => {
         totalNewEl.textContent = newLeads;
     }
 
-    // Lead Persistence Helpers
-    async function loadExtractedLeads() {
-        if (!currentUsername) return [];
-        const key = `user_${currentUsername}_leads`;
-        const res = await chrome.storage.local.get([key]);
-        return res[key] || [];
+    // Lead Persistence Helpers - Using Backend API
+    async function loadExtractedLeadsFromBackend() {
+        const userId = localStorage.getItem('linkedin_user_id');
+        if (!userId) return [];
+
+        try {
+            const result = await fetchHRContacts(userId);
+            if (result.success) {
+                return result.data || [];
+            } else {
+                console.error('Failed to fetch HR contacts:', result.error);
+                return [];
+            }
+        } catch (error) {
+            console.error('Error fetching HR contacts:', error);
+            return [];
+        }
     }
 
-    async function saveExtractedLeads(leads) {
-        if (!currentUsername) return;
-        const key = `user_${currentUsername}_leads`;
-        await chrome.storage.local.set({ [key]: leads });
+    async function saveExtractedLeadsToBackend(leads) {
+        const userId = localStorage.getItem('linkedin_user_id');
+        if (!userId) {
+            console.error('No user ID found');
+            return;
+        }
+
+        try {
+            const result = await saveHRContacts(userId, leads);
+            if (!result.success) {
+                console.error('Failed to save HR contacts:', result.error);
+                showStatus('error', `✗ Failed to save data: ${result.error}`);
+            }
+        } catch (error) {
+            console.error('Error saving HR contacts:', error);
+            showStatus('error', '✗ Failed to save data');
+        }
     }
 
     function resetButton() {

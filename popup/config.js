@@ -13,5 +13,6 @@ export const API_BASE_URL = 'https://jobseekers-for-linkedin-production.up.railw
 export const API_ENDPOINTS = {
     REGISTER: '/register',
     UPLOAD_RESUME: '/upload-resume',
+    HR_CONTACTS: '/hr-contacts',
     // Add more endpoints here as needed
 };
